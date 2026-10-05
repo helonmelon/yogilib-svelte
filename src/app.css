@@ -643,10 +643,19 @@ main {
   white-space: pre-wrap;
 }
 .prose {
-  max-width: 900px;
+  max-width: 1120px;
   margin: 3rem auto;
   padding: 0 2rem;
   line-height: 1.9;
+}
+.excerpt-list {
+  margin: 2rem 0 0;
+  padding-left: 2rem;
+}
+.excerpt-list li {
+  padding: 1rem 0 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.05rem;
 }
 .prose img {
   max-width: 220px;

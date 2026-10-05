@@ -55,8 +55,8 @@ afterAll(async () => {
   delete process.env.YOGILIB_UPLOAD_DIR;
 });
 describe('Archive API and role boundaries', () => {
-  it('keeps public documents readable while the collection needs login', async () => {
-    expect((await call('documents')).status).toBe(401);
+  it('keeps the archive and public documents readable', async () => {
+    expect((await call('documents')).status).toBe(200);
     const r = await call('documents/1');
     expect(r.status).toBe(200);
     expect(r.data.body_html).toContain('सुगौली सन्धि');
@@ -254,7 +254,7 @@ describe('Archive API and role boundaries', () => {
     await call('logout', 'POST', {}, 'login-test');
     expect(
       (await call('documents', 'GET', undefined, 'login-test')).status,
-    ).toBe(401);
+    ).toBe(200);
   });
   it('handles validated attachments and rejects disguised HTML', async () => {
     const good = new FormData();

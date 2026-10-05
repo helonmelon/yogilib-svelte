@@ -1,8 +1,6 @@
-import { redirect } from '@sveltejs/kit';
 import { api, APIError } from '$lib/client/api';
 export const load = async ({ fetch, url, parent }: any) => {
   const { session } = await parent();
-  if (!session.user) redirect(303, '/login');
   try {
     return {
       ...(await api('documents?' + url.searchParams.toString(), {}, fetch)),
@@ -10,8 +8,8 @@ export const load = async ({ fetch, url, parent }: any) => {
       category: url.searchParams.get('cat') || 'सबै',
     };
   } catch (e) {
-    if (session.offline) redirect(303, '/downloads');
-    if (e instanceof APIError && e.status === 401) redirect(303, '/login');
+    if (session.offline) return { documents: [], total: 0, offset: 0, query: '', category: 'सबै' };
+    if (e instanceof APIError && e.status === 401) return { documents: [], total: 0, offset: 0, query: '', category: 'सबै' };
     throw e;
   }
 };

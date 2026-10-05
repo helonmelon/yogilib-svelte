@@ -128,7 +128,6 @@ export async function handleAPI(event: RequestEvent) {
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
-      requireUser();
       const offset = Number(url.searchParams.get('offset') || 0);
       if (!Number.isSafeInteger(offset) || offset < 0)
         throw new Failure(400, 'Invalid page');

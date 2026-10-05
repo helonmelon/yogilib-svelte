@@ -1,6 +1,6 @@
 # Yogilib setup handoff
 
-Updated September 14, 2026. Read this when starting a fresh Yogilib task; the previous voice and setup chats are not needed to continue. Recheck changing facts before acting or claiming setup is complete.
+Updated October 4, 2026. Read this when starting a fresh Yogilib task; the previous voice and setup chats are not needed to continue. Recheck changing facts before acting or claiming setup is complete. The fuller product and design summary is in [the ChatGPT project context](09-chatgpt-project-context.md).
 
 ## User goal and working style
 
@@ -11,11 +11,11 @@ Use the existing `/Users/kafle/Desktop/yogilib` project, named Yogilib in the si
 ## Project and saved work
 
 - Go server-rendered web app using net/http and html/template; Go 1.25 or newer. Neon Postgres is already configured as the online database. Do not treat database setup as missing.
-- GitHub remote: `git@github.com:helonmelon/yogilib.git`.
-- Immediately before saving this handoff, Desktop main was clean at `8b22160`. A fresh read of GitHub main returned `af6f572`; local main had two unpushed commits: `2dd8a99` (reader polish) and `8b22160` (cross-device guide and agent instructions). This handoff adds local documentation changes. Recheck status and the live remote before any sync; these are dated observations, not automatic sync guarantees.
-- The earlier preparation added AGENTS.md and docs/07-cross-device-work.md and corrected README's Go minimum. Unit tests and go vet passed then; database integration checks were disabled. This handoff changes documentation only.
+- GitHub remote: `https://github.com/helonmelon/yogilib.git`.
+- Immediately before the ChatGPT context bundle was added on October 4, 2026, Desktop `main`, the Codex working branch, and `origin/main` were aligned at `48f9096`. Recent work added the bilingual interface selector, owner-aware deletion, the full-width reference reader with sticky sidebars, the login-first homepage flow, and the modern saffron palette. Recheck status and the live remote before any sync; these are dated observations, not automatic sync guarantees.
+- The latest code checks before this handoff passed with database integration variables unset. Database integration checks were skipped.
 - Uploaded files live in ignored `static/docs`; credentials are in ignored environment configuration. Cloning or pushing Git does not transfer these files or database data. Never put secrets in handoff documents.
-- Fly hosting files still reference the older SQLite setup. Actual hosting is unverified; no deployment was performed during setup. GitHub CLI was not signed in at the earlier check, though Git remote reads worked.
+- Fly hosting files still reference the older SQLite setup. Actual hosting is unverified; no deployment was performed during setup. GitHub CLI is signed in on this laptop. Git uses authenticated HTTPS because SSH authentication was rejected.
 
 ## Recommended workflow and reported device progress
 

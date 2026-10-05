@@ -134,3 +134,6 @@ For repeatable work, prefer deterministic Go code and small scripts. Use AI for 
 | [`04-backend-integration.md`](docs/04-backend-integration.md) | DB schema, handler map, file upload flow, search |
 | [`05-language-support.md`](docs/05-language-support.md) | Unicode, Nepali typing, Preeti encoding, ITRANS, Sanskrit |
 | [`06-changelog.md`](docs/06-changelog.md) | Change history |
+| [`07-cross-device-work.md`](docs/07-cross-device-work.md) | Work from a phone and multiple computers without losing context |
+| [`08-project-handoff.md`](docs/08-project-handoff.md) | Current multi-device setup status and remaining checks |
+| [`09-chatgpt-project-context.md`](docs/09-chatgpt-project-context.md) | Safe context bundle for ChatGPT projects and future handoffs |

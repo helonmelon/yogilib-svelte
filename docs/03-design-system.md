@@ -15,8 +15,13 @@ Both **Hind** and the browser's built-in Noto Sans Devanagari (macOS/Windows) re
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--accent` | `#8b3a3a` | Primary brand colour — links, buttons, active states |
-| Accent dark | `#6d2a2a` | Button hover |
+| `--red` | `#b73522` | Vermilion links and emphasis |
+| `--orange` | `#e97817` | Primary saffron actions and borders |
+| `--forest` | `#6f2c1d` | Legacy token now used as temple brown |
+| `--ink` | `#2b211c` | Main text |
+| `--bg` | `#fffdf9` | Warm cream page background |
+| `--border` | `#e4d5c5` | Warm neutral borders |
+| Burnt saffron | `#a84217` / `#c75a18` | Login and interactive hover states |
 | Preeti/converter amber | `#7a4a1e` / `#c9a07a` | Converter panel borders and text |
 | Background | `#fafafa` | Form inputs, editor toolbar |
 | Card | `#fff` | Form cards, editor container |
@@ -109,4 +114,4 @@ All Devanagari text (Nepali + Sanskrit) renders correctly in the Quill editor bo
 - Category tabs include: सबै किताब कागजात रेकर्ड पत्रिका **अंश** अन्य
 # Document reading pages
 
-Document pages use the forest-green and warm-orange palette with a larger semantic title hierarchy, comfortable reading width, generous line spacing, and consistent dark section headings. Document-specific rules live in `static/css/reader.css` over the shared stylesheet.
+Document pages use the saffron, temple-brown, and warm-cream palette with a larger semantic title hierarchy, comfortable reading width, generous line spacing, and consistent dark section headings. Document-specific rules live in `static/css/reader.css` over the shared stylesheet.

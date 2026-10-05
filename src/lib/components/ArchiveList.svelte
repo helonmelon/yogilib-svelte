@@ -1,7 +1,20 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import { invalidateAll } from '$app/navigation';
+  import { api } from '$lib/client/api';
   import { categories } from '$lib/types';
   let { data, admin = false } = $props();
+  let deleting = $state<string | null>(null);
+  async function deleteDocument(id: string) {
+    if (!confirm('Delete this document permanently? This cannot be undone.')) return;
+    deleting = id;
+    try {
+      await api(`documents/${id}`, { method: 'DELETE' });
+      await invalidateAll();
+    } finally {
+      deleting = null;
+    }
+  }
 </script>
 
 <section class="archive">
@@ -45,9 +58,14 @@
             {doc.orig_year ? '· ' + doc.orig_year : ''}</small
           >
         </div>
-        {#if admin}<a class="button" href={`/document/${doc.id}/edit`}
-            >{$t('Edit')}</a
-          >{/if}
+        {#if admin}<div class="document-actions">
+            <a class="button" href={`/document/${doc.id}/edit`}>{$t('Edit')}</a>
+            <button
+              class="danger"
+              disabled={deleting === doc.id}
+              onclick={() => deleteDocument(doc.id)}
+            >{deleting === doc.id ? 'Deleting…' : $t('Delete')}</button>
+          </div>{/if}
       </article>{:else}<p class="empty">{$t('No documents found.')}</p>{/each}
   </div>
   <div class="pager">

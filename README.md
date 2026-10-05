@@ -1,8 +1,8 @@
 # Yogilib 0.2 — Svelte website and mobile app
 
-Yogilib preserves Yogi Narharinath’s works and Nepal’s historical material. This development migration replaces the Go application with SvelteKit, TypeScript and a Node server. A Capacitor build packages the shared interface for Android and iOS. PostgreSQL remains the shared database; downloaded works are stored separately on each device.
+Yogilib preserves Yogi Narharinath’s works and Nepal’s historical material. It uses SvelteKit, TypeScript and a Node server. A Capacitor build packages the shared interface for Android and iOS. PostgreSQL remains the shared database; downloaded works are stored separately on each device.
 
-The previous Go source and full Git history are preserved in the sibling `yogilib0.1/` folder and the saved `yogilib0.1.zip` archive. This migration is based on upstream commit `249a3e92b108a17f5ed7ede37a20621ee21f87f5`, on local branch `migration/sveltekit`. The migration is prepared for https://github.com/helonmelon/yogilib-svelte. It has not been deployed or connected to the live archive. Check Git status and remote refs for the current commit and push state.
+The project source is maintained at https://github.com/helonmelon/yogilib-svelte. Check Git status and remote refs before publishing changes.
 
 ## Run an isolated development website
 
@@ -13,9 +13,9 @@ npm ci
 npm run dev
 ```
 
-Open the address Vite prints **on the computer running this command**. A cloud sandbox localhost address is not Windows localhost. The default development server uses PGlite, an embedded PostgreSQL engine, and saves disposable development data under `.local/postgres`. No external database or Go installation is required.
+Open the address Vite prints on the computer running this command. The default development server uses PGlite, an embedded PostgreSQL engine, and saves disposable development data under `.local/postgres`.
 
-The login page has reader, uploader and admin demo buttons. These accounts exist only in PGlite development mode. The sample archive contains the treaty fixture preserved from the Go application, not the shared live archive. Uploads go to `.local/uploads` unless object storage is explicitly configured. Do not expose demo mode publicly.
+The login page has reader, uploader and admin demo buttons. These accounts exist only in PGlite development mode. The sample archive contains a treaty fixture, not the shared live archive. Uploads go to `.local/uploads` unless object storage is explicitly configured. Do not expose demo mode publicly.
 
 ## Build and verify
 
@@ -49,7 +49,7 @@ See [migration and release guide](docs/migration.md) before connecting any exist
 
 Use private environment configuration for `DATABASE_URL`. Normal external-database startup does **not** create schema or seed records. The additive SQL migration must be reviewed and run explicitly against a backed-up development copy first. Keep `YOGILIB_DATABASE` unset when using an external PostgreSQL server.
 
-Original PDFs/images are separate from the database. New uploads use a configured S3-compatible bucket or a persistent server directory. Existing Go `/static/docs/...` URLs can be served from the read-only `LEGACY_UPLOAD_DIR`. Those untracked files are not present in this cloud backup and must be transferred separately before a real migration.
+Original PDFs/images are separate from the database. New uploads use a configured S3-compatible bucket or a persistent server directory. Existing `/static/docs/...` URLs can be served from the read-only `LEGACY_UPLOAD_DIR`.
 
 ## Android and iOS
 
@@ -79,4 +79,4 @@ Actual native compilation, physical-device testing, signing, app icons, store me
 
 The Store remains the existing informational placeholder. Payments, self-registration and password-reset flows were not present in the old application and are not added here.
 
-Read [architecture](docs/architecture.md), [feature parity and validation](docs/verification.md), and [current handoff](docs/09-chatgpt-project-context.md). Historical documentation is retained unchanged under `docs/v0.1/`; its Go commands and old deployment details do not describe this version.
+Read [architecture](docs/architecture.md), [feature parity and validation](docs/verification.md), and [release guidance](docs/migration.md).

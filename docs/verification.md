@@ -29,7 +29,7 @@
 - `npx cap sync`: generated client assets and SQLite/filesystem plugin wiring for Android/iOS.
 - `git diff --check`: whitespace validation.
 
-All runtime and database checks used disposable PGlite data. Tests did not use the shared Neon configuration or the existing Windows checkout. The legacy Go test/vet checks passed in the preserved checkout before replacing the active working tree.
+Runtime and database checks use disposable PGlite data unless a Neon development branch is explicitly configured. Tests must never use production data.
 
 ## Explicitly not verified
 

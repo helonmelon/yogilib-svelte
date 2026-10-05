@@ -1,6 +1,6 @@
 # Working on Yogilib 0.2
 
-SvelteKit + TypeScript replaces the Go runtime. The full Go project and Git history are preserved separately as yogilib0.1. Follow the user's explicit migration decision over historical Go-specific rules in docs/v0.1.
+SvelteKit + TypeScript is the active runtime. Follow the current Svelte/Node implementation and documentation.
 
 - Preserve Devanagari and original archive material; localize interface strings only.
 - Keep the compact saffron design and all permissions enforced on the server.

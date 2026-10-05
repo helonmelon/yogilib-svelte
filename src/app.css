@@ -696,6 +696,22 @@ main {
 .editor-page .card {
   margin: 1.3rem 0;
 }
+.editor-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.editor-tabs > span {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.editor-converter-toggle {
+  margin-left: auto;
+}
+.editor-tabs .editor-converter-toggle + span {
+  margin-left: 0;
+}
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

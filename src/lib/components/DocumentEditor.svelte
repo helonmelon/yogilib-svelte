@@ -28,6 +28,7 @@
   let host: HTMLDivElement;
   let editor: any;
   let source = $state(false),
+    showConverter = $state(false),
     mode = $state('preeti'),
     conversion = $state(''),
     converted = $derived(
@@ -251,6 +252,12 @@
           onclick={() => {
             if (!source) toggle();
           }}>{$t('HTML source')}</button
+        ><button
+          type="button"
+          class="editor-converter-toggle"
+          class:chosen={showConverter}
+          onclick={() => (showConverter = !showConverter)}
+          >{$t('Script converter')}</button
         ><span>{form.body_html.replace(/<[^>]*>/g, '').length}</span>
       </div>
       <div
@@ -268,7 +275,7 @@
             spellcheck="false"></textarea></label
         >{/if}{#if !ready && !source}<p>{$t('Loading…')}</p>{/if}
     </div>
-    <div class="card converter">
+    {#if showConverter}<div class="card converter">
       <h2>{$t('Script converter')}</h2>
       <select aria-label="Converter" bind:value={mode}
         ><option value="preeti">Preeti → Unicode</option><option value="itrans"
@@ -285,7 +292,7 @@
         >
       </div>
       <button type="button" onclick={insert}>{$t('Insert into editor')}</button>
-    </div>
+    </div>{/if}
     {#if !doc}<div class="card">
         <label
           >{$t('Original file')}<input

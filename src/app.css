@@ -706,6 +706,12 @@ main {
   color: var(--muted);
   font-size: 0.8rem;
 }
+.editor-count {
+  margin-top: 0.55rem;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
 .editor-converter-toggle {
   margin-left: auto;
   width: auto;

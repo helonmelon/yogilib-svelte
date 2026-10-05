@@ -35,6 +35,11 @@
         ? preetiToUnicode(conversion)
         : itransToUnicode(conversion),
     ),
+    wordCount = $derived(
+      form.body_html.replace(/<[^>]*>/g, ' ').trim()
+        ? form.body_html.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).length
+        : 0,
+    ),
     busy = $state(false),
     error = $state(''),
     file = $state<File | null>(null),
@@ -258,7 +263,7 @@
           ><option value="">Script converter</option><option value="preeti"
             >Preeti → Unicode</option
           ><option value="itrans">ITRANS → देवनागरी</option></select
-        ><span>{form.body_html.replace(/<[^>]*>/g, '').length}</span>
+        >
       </div>
       <div
         class:hidden={source}
@@ -274,6 +279,7 @@
             rows="18"
             spellcheck="false"></textarea></label
         >{/if}{#if !ready && !source}<p>{$t('Loading…')}</p>{/if}
+      <div class="editor-count">{wordCount} {wordCount === 1 ? 'word' : 'words'}</div>
     </div>
     {#if converterChoice}<div class="card converter">
       <h2>{$t('Script converter')}</h2>

@@ -120,10 +120,7 @@
   </div>
 </header>
 <nav class="navigation" aria-label="Main">
-  <a class:active={$page.url.pathname === '/'} href="/">{$t('Archive')}</a><a
-    class:active={$page.url.pathname === '/downloads'}
-    href="/downloads">{$t('Downloads')}</a
-  ><a href="/works">{$t('Works')}</a
+  <a class:active={$page.url.pathname === '/'} href="/">{$t('Archive')}</a
   >{#if user?.role === 'admin' || user?.role === 'uploader'}<a href="/upload"
       >{$t('Upload')}</a
     >{/if}{#if user?.role === 'admin'}<a href="/dashboard">{$t('Dashboard')}</a
@@ -142,11 +139,5 @@
 <main id="main">{@render children()}</main>
 <footer>
   <span>Yogilib — योगी नरहरिनाथको स्मृतिमा (१९७१–२०५९)</span>
-  <nav>
-    <a href="/about">{$t('About')}</a><a href="/mission">{$t('Mission')}</a><a
-      href="/similar">{$t('Resources')}</a
-    ><a href="/store">{$t('Store')}</a><a href="mailto:yogilib108@gmail.com"
-      >Contact</a
-    >
-  </nav>
+  <nav><a href="mailto:yogilib108@gmail.com">Contact</a></nav>
 </footer>

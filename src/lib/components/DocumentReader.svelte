@@ -11,9 +11,6 @@
     type Progress,
   } from '$lib/types';
   import {
-    download,
-    getCached,
-    originalURL,
     addNote,
     deleteNote,
     localNotes,
@@ -30,7 +27,6 @@
   let body = $state<HTMLElement>();
   let toc = $state<{ id: string; text: string; level: string }[]>([]),
     message = $state(''),
-    saved = $state(false),
     busy = $state(false),
     size = $state(21),
     spacing = $state(1.9),
@@ -44,7 +40,6 @@
     notes = $state<Note[]>([]),
     history = $state<Revision[]>([]),
     historyOpen = $state(false),
-    localOriginal = $state(''),
     progress = $state<Progress>({ position: 0, version: 0 }),
     conflict = $state<Progress | null>(null);
   let confirmDelete = $state(false), deleting = $state(false);
@@ -224,19 +219,6 @@
       status(e);
     }
   }
-  async function saveOffline() {
-    busy = true;
-    try {
-      await download(doc);
-      saved = true;
-      localOriginal = await originalURL(doc.id);
-      message = 'Saved offline';
-    } catch (e) {
-      status(e);
-    } finally {
-      busy = false;
-    }
-  }
   async function remove() {
     confirmDelete = true;
   }
@@ -333,12 +315,6 @@
   }
   onMount(() => {
     let alive = true;
-    getCached(doc.id)
-      .then((d) => (saved = !!d))
-      .catch(status);
-    originalURL(doc.id)
-      .then((u) => (localOriginal = u))
-      .catch(status);
     try {
       const prefs = JSON.parse(
         localStorage.getItem('yogilib-reader-v2') || '{}',
@@ -376,7 +352,6 @@
     return () => {
       alive = false;
       document.removeEventListener('selectionchange', selection);
-      if (localOriginal.startsWith('blob:')) URL.revokeObjectURL(localOriginal);
       const css = CSS as any;
       for (const key of ['yogilib-search', 'yogilib-active', 'yogilib-notes'])
         css.highlights?.delete(key);
@@ -430,10 +405,8 @@
     </p>
     <p class="description">{doc.description}</p>
     <div class="download-bar">
-      <button class="primary" disabled={busy} onclick={saveOffline}
-        >{$t(saved ? 'Saved offline' : 'Save offline')}</button
-      >{#if doc.file_path}<a
-          href={localOriginal || assetURL(doc.file_path)}
+      {#if doc.file_path}<a
+          href={assetURL(doc.file_path)}
           target="_blank"
           rel="noopener">{$t('View original')}</a
         >{/if}{#if user}<button onclick={position}
@@ -475,13 +448,13 @@
 />
       {#if doc.file_path}<div class="original">
           {#if /\.(png|jpe?g|webp)$/i.test(doc.file_path)}<img
-              src={localOriginal || assetURL(doc.file_path)}
+              src={assetURL(doc.file_path)}
               alt="Original document scan"
             />{:else}<object
               type="application/pdf"
-              data={localOriginal || assetURL(doc.file_path)}
+              data={assetURL(doc.file_path)}
               aria-label="Original document"
-              ><a href={localOriginal || assetURL(doc.file_path)}
+              ><a href={assetURL(doc.file_path)}
                 >{$t('View original')}</a
               ></object
             >{/if}

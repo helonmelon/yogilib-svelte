@@ -17,7 +17,7 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes |
 | `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions    |
 | `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges       |
-| `src/lib/client/offline.ts`                | IndexedDB/native SQLite cache, downloads and sync outbox    |
+| `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                    |
 | `src/lib/components/DocumentReader.svelte` | Document tools, notes, history and progress                 |
 | `src/lib/components/DocumentEditor.svelte` | Lazy-loaded Quill, source editing and conversion            |
 | `src/lib/content/`                         | Preserved informational and sample archive content          |

@@ -70,12 +70,12 @@ Actual native compilation, physical-device testing, signing, app icons, store me
 
 ## What is included
 
-- Public document reading and the original About, Works, Excerpts, Mission, Resources and Store pages.
+- Public document reading, archive search and role-based editing.
 - Login, viewer/uploader/admin permissions, archive search and category filtering.
 - Uploads, original PDF/image reading, rich-text/source editing, Preeti and ITRANS conversion.
 - Private notes/highlights, passage links, reading tools, revision history and restore.
 - English/Nepali interface with original Nepali/Sanskrit/English archive text retained.
-- Downloaded reading, queued private notes, reading-position synchronization with explicit conflict handling.
+- Queued private notes and reading-position synchronization with explicit conflict handling.
 
 The Store remains the existing informational placeholder. Payments, self-registration and password-reset flows were not present in the old application and are not added here.
 

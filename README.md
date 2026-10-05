@@ -1,139 +1,82 @@
-# Yogilib — Web Frontend
+# Yogilib 0.2 — Svelte website and mobile app
 
-A digital archive for the works of **Yogi Narharinath** (योगी नरहरिनाथ) — Nepali scholar, historian, and religious figure. The site lets visitors browse, search, and read historical documents in English, Nepali, and Sanskrit, and lets contributors upload new material.
+Yogilib preserves Yogi Narharinath’s works and Nepal’s historical material. This development migration replaces the Go application with SvelteKit, TypeScript and a Node server. A Capacitor build packages the shared interface for Android and iOS. PostgreSQL remains the shared database; downloaded works are stored separately on each device.
 
-Built with **Go** using `net/http` and `html/template`. Every page is server-rendered. The shared database is **Neon Postgres**, so the same project data can be used from multiple computers.
+The previous Go source and full Git history are preserved in the sibling `yogilib0.1/` folder and the saved `yogilib0.1.zip` archive. This migration is based on upstream commit `249a3e92b108a17f5ed7ede37a20621ee21f87f5`, on local branch `migration/sveltekit`. The migration is prepared for https://github.com/helonmelon/yogilib-svelte. It has not been deployed or connected to the live archive. Check Git status and remote refs for the current commit and push state.
 
----
+## Run an isolated development website
 
-## Quick start
+Install Node 22 or newer, then:
 
-```bash
-go mod tidy             # install Go dependencies
-go run .          # dev server at http://localhost:8080
-DEV_RELOAD=1 go run . # dev server with browser auto-reload
-go build -o yogilib .   # production binary
-PORT=9000 ./yogilib     # custom port
+```sh
+npm ci
+npm run dev
 ```
 
-Requires **Go 1.25+** and a `DATABASE_URL`. The app automatically reads `.env.local` when present; Neon writes that file during `neon link`, `neon checkout`, and `neon deploy`.
+Open the address Vite prints **on the computer running this command**. A cloud sandbox localhost address is not Windows localhost. The default development server uses PGlite, an embedded PostgreSQL engine, and saves disposable development data under `.local/postgres`. No external database or Go installation is required.
 
-To request changes from your phone and continue on another computer, start with the [cross-device guide](docs/07-cross-device-work.md).
+The login page has reader, uploader and admin demo buttons. These accounts exist only in PGlite development mode. The sample archive contains the treaty fixture preserved from the Go application, not the shared live archive. Uploads go to `.local/uploads` unless object storage is explicitly configured. Do not expose demo mode publicly.
 
-On a second computer:
+## Build and verify
 
-```bash
-git clone git@github.com:helonmelon/yogilib.git
-cd yogilib
-neon link --project-id lucky-boat-33662130 --branch production -y
-go run .
+```sh
+npm run check
+npm test
+npm run build
+npm run test:smoke
 ```
 
-If you are not using the Neon CLI, copy `.env.example` to `.env.local` and fill in `DATABASE_URL`.
+`test:smoke` starts a temporary production Node server with a disposable PGlite database, checks public pages and authenticated pages, then stops it. It does not use `.env.local` or mutate a shared database. For a local production-mode demo after building:
 
-`DEV_RELOAD=1` enables a development-only watcher for templates, reader CSS, and reader JavaScript. Ordinary runs do not poll for changes.
-
----
-
-## What's in the box
-
-| Area | Status |
-|---|---|
-| All public pages (home, about, works, document viewer, excerpts, store, similar sites) | Done |
-| Neon Postgres database with full-text search | Done |
-| Login system with session-based auth and role tiers | Done |
-| Contribute / upload form | Done |
-| Admin pages (dashboard, edit) | Done |
-| Document reader controls, typography, navigation, passage links, and responsive original/transcription view | Done |
-| Private reader notes and admin revision history | Done |
-| Development browser auto-reload (`DEV_RELOAD=1`) | Done |
-| Preeti → Unicode converter (legacy Nepali encoding) | Done |
-| ITRANS → Devanagari converter (Sanskrit transliteration) | Done |
-| File / object storage (R2, S3, Neon Object Storage) | Not connected |
-
----
-
-## Stack
-
-```text
-Browser -> net/http Mux -> Auth Middleware -> Handler -> html/template -> HTML
-                                |
-                           Neon Postgres
+```sh
+# POSIX shell
+YOGILIB_DATABASE=pglite ORIGIN=http://localhost:3000 npm start
 ```
 
-- **Server**: `net/http` + `html/template`
-- **Database**: Neon Postgres via `github.com/jackc/pgx/v5`
-- **Search**: Postgres full-text search with `to_tsvector('simple', ...)` plus `ILIKE` fallback
-- **Auth**: bcrypt passwords (`golang.org/x/crypto`), session tokens in Postgres, `HttpOnly` cookie
-- **Styles**: single `static/css/style.css`, Himalaya font for Devanagari
-- **Language support**: Unicode Devanagari, Preeti and ITRANS converters for legacy text
+PowerShell equivalent:
 
----
-
-## Authentication & access tiers
-
-The homepage starts at the login screen. Direct document and reading links remain publicly readable; signed-in users enter the archive index from `/`.
-
-### Roles
-
-| Role | Access |
-|---|---|
-| *(public)* | Direct document and reading pages; `/` redirects to login |
-| `uploader` | Everything public + `/upload`; may delete documents they uploaded |
-| `admin` | Everything above + `/dashboard`, `/document/{id}/edit`; may delete any document |
-
-### Seeded accounts (development only)
-
-On first run against an empty database, two development accounts are created automatically:
-
-| Email | Password | Role |
-|---|---|---|
-| `admin@yogilib.org` | `admin123` | `admin` |
-| `upload@yogilib.org` | `upload123` | `uploader` |
-
-**Change these before deploying to production.**
-
-### Sessions
-
-- Sessions are stored in the `sessions` table in Postgres
-- A random 64-character token is set as an `HttpOnly` cookie named `session`
-- Sessions expire after **30 days**
-- Logging out deletes the session from the database and clears the cookie
-
----
-
-## Database
-
-The app expects `DATABASE_URL` to point at Neon Postgres. Schema is created automatically on startup if the tables do not exist.
-
-### Schema overview
-
-```sql
-documents (id, title, title_np, category, description, body_html, body_text, lang, script, orig_author, orig_author_np, orig_year, orig_month, orig_day, file_path, uploaded_by, created_at)
-users (id, email, password_hash, role)
-sessions (token, user_id, expires_at)
+```powershell
+$env:YOGILIB_DATABASE = 'pglite'
+$env:ORIGIN = 'http://localhost:3000'
+npm start
 ```
 
-### Search
+The browser offline service worker is enabled in production builds on HTTPS or localhost. The Vite development server intentionally does not register it.
 
-Search indexes title, Nepali title, description, and body text through a Postgres GIN expression index. Queries use Postgres full-text search plus `ILIKE` matching so short Nepali/English snippets still work naturally.
+## Shared PostgreSQL and original files
 
----
+See [migration and release guide](docs/migration.md) before connecting any existing archive. Neon/PostgreSQL is suitable for the shared users, archive metadata, notes, revisions and reading positions. PostgreSQL is a server dependency; the app does not download a server database.
 
-## Docs
+Use private environment configuration for `DATABASE_URL`. Normal external-database startup does **not** create schema or seed records. The additive SQL migration must be reviewed and run explicitly against a backed-up development copy first. Keep `YOGILIB_DATABASE` unset when using an external PostgreSQL server.
 
-Document pages include a clickable table of contents, adjustable reading settings, in-document search, copyable passage links, responsive original/transcription viewing, private signed-in notes, and admin revision restore. Reading preferences are stored in the browser. Uploaded files remain local under `static/docs` until shared object storage is connected.
+Original PDFs/images are separate from the database. New uploads use a configured S3-compatible bucket or a persistent server directory. Existing Go `/static/docs/...` URLs can be served from the read-only `LEGACY_UPLOAD_DIR`. Those untracked files are not present in this cloud backup and must be transferred separately before a real migration.
 
-For repeatable work, prefer deterministic Go code and small scripts. Use AI for design exploration or unfamiliar problems when useful, then keep changes reviewable and testable. Bundle related work and run targeted validation to conserve resources.
+## Android and iOS
 
-| File | What it covers |
-|---|---|
-| [`01-getting-started.md`](docs/01-getting-started.md) | Running the server, project layout, adding new pages |
-| [`02-architecture.md`](docs/02-architecture.md) | Request lifecycle, core types, routing table, template system |
-| [`03-design-system.md`](docs/03-design-system.md) | Typography, colour palette, UI components |
-| [`04-backend-integration.md`](docs/04-backend-integration.md) | DB schema, handler map, file upload flow, search |
-| [`05-language-support.md`](docs/05-language-support.md) | Unicode, Nepali typing, Preeti encoding, ITRANS, Sanskrit |
-| [`06-changelog.md`](docs/06-changelog.md) | Change history |
-| [`07-cross-device-work.md`](docs/07-cross-device-work.md) | Work from a phone and multiple computers without losing context |
-| [`08-project-handoff.md`](docs/08-project-handoff.md) | Current multi-device setup status and remaining checks |
-| [`09-chatgpt-project-context.md`](docs/09-chatgpt-project-context.md) | Safe context bundle for ChatGPT projects and future handoffs |
+`android/` and `ios/` contain generated Capacitor projects. Set `VITE_API_URL` to the approved HTTPS SvelteKit backend, then:
+
+```sh
+npm run mobile:sync
+npm run mobile:android
+# On a Mac with Xcode:
+npm run mobile:ios
+```
+
+`mobile:sync` builds a static mobile client and copies it into both native projects. The native client talks to the shared Node API; it does not bundle a Node server or PostgreSQL. Downloads use native SQLite plus app-private filesystem storage. Browser downloads use IndexedDB.
+
+For a compile check without an online backend, use `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` (POSIX), or set `$env:MOBILE_VALIDATE_ONLY = '1'` first in PowerShell. This produces an intentionally unconfigured bundle and must not be distributed.
+
+Actual native compilation, physical-device testing, signing, app icons, store metadata and store submission remain to be done. `org.yogilib.archive` is a provisional app identifier. No APK, IPA or store-ready app is claimed.
+
+## What is included
+
+- Public document reading and the original About, Works, Excerpts, Mission, Resources and Store pages.
+- Login, viewer/uploader/admin permissions, archive search and category filtering.
+- Uploads, original PDF/image reading, rich-text/source editing, Preeti and ITRANS conversion.
+- Private notes/highlights, passage links, reading tools, revision history and restore.
+- English/Nepali interface with original Nepali/Sanskrit/English archive text retained.
+- Downloaded reading, queued private notes, reading-position synchronization with explicit conflict handling.
+
+The Store remains the existing informational placeholder. Payments, self-registration and password-reset flows were not present in the old application and are not added here.
+
+Read [architecture](docs/architecture.md), [feature parity and validation](docs/verification.md), and [current handoff](docs/09-chatgpt-project-context.md). Historical documentation is retained unchanged under `docs/v0.1/`; its Go commands and old deployment details do not describe this version.

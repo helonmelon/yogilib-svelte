@@ -1,27 +1,18 @@
-# --- Build stage ---
-FROM golang:1.25-alpine AS builder
+FROM node:24-bookworm-slim AS build
 WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
+COPY package*.json ./
+RUN npm ci
 COPY . .
-RUN go build -o yogilib .
+RUN npm run build && npm prune --omit=dev
 
-# --- Run stage ---
-FROM alpine:3.19
-RUN apk add --no-cache ca-certificates tzdata
-
+FROM node:24-bookworm-slim
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 BODY_SIZE_LIMIT=55M
 WORKDIR /app
-
-COPY --from=builder /app/yogilib ./yogilib
-COPY --from=builder /app/static ./static
-COPY --from=builder /app/templates ./templates
-
-# DB lives on a mounted volume at /data so it survives redeploys
-ENV PORT=8080
-ENV DB_PATH=/data/yogilib.db
-
-EXPOSE 8080
-
-CMD ["./yogilib"]
+COPY --from=build --chown=node:node /app/build ./build
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/package.json ./package.json
+COPY --from=build --chown=node:node /app/migrations ./migrations
+RUN mkdir -p /app/.local/uploads && chown -R node:node /app/.local
+USER node
+EXPOSE 3000
+CMD ["node", "build"]

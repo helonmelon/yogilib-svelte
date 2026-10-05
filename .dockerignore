@@ -1,6 +1,11 @@
-yogilib
-yogilib.db
-yogilib.db-shm
-yogilib.db-wal
-fly.toml
 .git
+node_modules
+.local
+.env*
+!.env.example
+.svelte-kit
+build
+mobile-dist
+android
+ios
+*.log

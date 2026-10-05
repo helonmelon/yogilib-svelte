@@ -1,20 +1,14 @@
-# Working on Yogilib
+# Working on Yogilib 0.2
 
-Yogilib is a Go web app for the works of Yogi Narharinath. Read README.md and the relevant docs before changing it. Explain outcomes in simple language, make routine reversible choices, and preserve the user's existing work.
+SvelteKit + TypeScript replaces the Go runtime. The full Go project and Git history are preserved separately as yogilib0.1. Follow the user's explicit migration decision over historical Go-specific rules in docs/v0.1.
 
-## Setup and checks
-
-- Use Go 1.25 or newer, as required by go.mod. Download dependencies with `go mod download`.
-- Run `go test ./...` and `go vet ./...` for code changes. A database is not needed for the default unit tests. Report skipped database checks honestly.
-- For database-free checks, unset `TEST_DATABASE_URL` and `YOGILIB_READER_TEST`; these opt into database tests. Do not source .env.local just to run unit tests.
-- Running the app needs DATABASE_URL and creates schema/seeds on startup. Use a separate development database for work that writes data or changes schema. Never treat shared live data as disposable test data.
-- Keep credentials in ignored local environment files or the environment; never include their values in commits, logs, or handoff notes.
-
-## Continuing across devices
-
-- Read [the current setup handoff](docs/08-project-handoff.md) first when starting a fresh task or continuing device setup. It preserves the user's goal, reported progress, and remaining checks independently of old chats.
-- Follow docs/07-cross-device-work.md. Prefer continuing the same task on the same connected host when possible.
-- Before syncing code, check the current branch, uncommitted changes, and current remote state. Preserve changes from other devices. Never force-push or reset work to resolve an ordinary sync issue.
-- When handing work over, report the branch and commit, changes made, checks run, and what remains. Say explicitly if changes have not been pushed.
-- Git transfers tracked project files. It does not transfer .env.local, uploaded files under static/docs, database data, or automatically continue conversations.
-- Do not claim another device is connected until pairing and a task continuation have been verified. Do not deploy as part of ordinary device setup.
+- Preserve Devanagari and original archive material; localize interface strings only.
+- Keep the compact saffron design and all permissions enforced on the server.
+- Use Node 22+ and the committed npm lockfile: npm ci.
+- Run npm run check, npm test, npm run build, and npm run build:mobile for relevant changes.
+- npm run dev uses isolated PGlite data in ignored .local/. Never load live Neon for tests.
+- External Postgres schema updates are explicit: review migrations before db:migrate. No destructive reset scripts.
+- Never expose credentials, commit .env.local, or commit uploaded originals.
+- Preserve existing work, inspect Git before syncing, and report branch, commit, checks, and push status.
+- No production deployment or store submission without explicit authorization.
+- Native builds must be tested on iOS/Android before claiming device functionality or store readiness.

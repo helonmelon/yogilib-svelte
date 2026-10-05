@@ -123,7 +123,7 @@
   <a class:active={$page.url.pathname === '/'} href="/">{$t('Archive')}</a><a
     class:active={$page.url.pathname === '/downloads'}
     href="/downloads">{$t('Downloads')}</a
-  ><a href="/works">{$t('Works')}</a><a href="/excerpts">{$t('Excerpts')}</a
+  ><a href="/works">{$t('Works')}</a
   >{#if user?.role === 'admin' || user?.role === 'uploader'}<a href="/upload"
       >{$t('Upload')}</a
     >{/if}{#if user?.role === 'admin'}<a href="/dashboard">{$t('Dashboard')}</a

@@ -28,12 +28,6 @@
 
 <svelte:head><title>{$t('Sign in')} · Yogilib</title></svelte:head>
 <section class="login-grid">
-  <div class="login-intro">
-    <span class="eyebrow">YOGILIB / अभिलेखालय</span>
-    <h1>ज्ञानको संरक्षण।<br /><em>पुस्तादेखि पुस्तासम्म।</em></h1>
-    <p>{$t('Sign in')} · {$t('Archive')}</p>
-    <img src="/static/imgs/yogiji.jpeg" alt="Yogi Narharinath" />
-  </div>
   <div class="card login-card">
     <h2>{$t('Sign in')}</h2>
     <form
@@ -74,6 +68,6 @@
                   : 'Explore as uploader',
             )}</button
           >{/each}
-      </div>{/if}<a href="/document/1">Treaty of Sugauli · सुगौली सन्धि</a>
+      </div>{/if}
   </div>
 </section>

@@ -367,10 +367,9 @@ main {
   padding: 1.8rem;
 }
 .login-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5rem;
-  max-width: 1060px;
+  display: flex;
+  justify-content: center;
+  max-width: 720px;
   margin: 4rem auto;
   padding: 0 2rem;
   align-items: start;
@@ -393,6 +392,7 @@ main {
   border: 6px solid #efe2cb;
 }
 .login-card {
+  width: min(100%, 620px);
   box-shadow: 0 8px 35px #58331a09;
 }
 .login-card h2 {
@@ -401,9 +401,6 @@ main {
 .login-card form > button {
   width: 100%;
   margin: 0.4rem 0 1rem;
-}
-.login-card > a {
-  font-size: 0.85rem;
 }
 .demo-options {
   border-top: 1px solid var(--line);

@@ -402,6 +402,24 @@ main {
   width: 100%;
   margin: 0.4rem 0 1rem;
 }
+.google-login {
+  width: 100%;
+  min-height: 3rem;
+  background: #fff;
+  border-color: #c9bbaa;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1.4rem 0;
+  color: var(--muted);
+}
+.login-divider::before,
+.login-divider::after { content: ''; height: 1px; flex: 1; background: var(--line); }
+.login-divider span { font-size: 0.85rem; }
+.contributor-login,
+.back-login { display: block; text-align: center; }
 .demo-options {
   border-top: 1px solid var(--line);
   padding-top: 1.2rem;

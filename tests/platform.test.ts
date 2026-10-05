@@ -305,6 +305,20 @@ describe('Archive API and role boundaries', () => {
     expect(itransToUnicode('namaH shivAya')).toContain('नमः');
     expect(itransToUnicode('OM')).toBe('ॐ');
   });
+  it('allows admins to delete every document but limits uploaders to their own', async () => {
+    const created = await call(
+      'documents',
+      'POST',
+      { title: 'Owner document', category: 'कागजात', body_html: '<p>x</p>' },
+      'uploader',
+    );
+    expect(created.status).toBe(201);
+    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
+    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
+    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect((await call('documents/1')).status).toBe(404);
+    expect((await call('documents/' + created.data.id)).status).toBe(404);
+  });
 });
 describe('Non-destructive migration', () => {
   it('keeps legacy notes intact and can run twice', async () => {

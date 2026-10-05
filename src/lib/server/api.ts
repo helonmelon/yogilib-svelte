@@ -9,6 +9,7 @@ import {
   listDocuments,
   saveDocument,
   deleteDocument,
+  deleteAllDocuments,
   restoreDocument,
 } from './archive';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
@@ -121,6 +122,11 @@ export async function handleAPI(event: RequestEvent) {
     }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
+    if (id === 'all' && method === 'DELETE') {
+      const deleted = await deleteAllDocuments(db, requireUser('admin'));
+      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      return json({ ok: true, deleted: deleted.count });
+    }
     if (!id && method === 'GET') {
       requireUser();
       const offset = Number(url.searchParams.get('offset') || 0);

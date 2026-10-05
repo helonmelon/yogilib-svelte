@@ -197,6 +197,25 @@ export async function deleteDocument(db: DB, id: string, user: User) {
     return d;
   });
 }
+export async function deleteAllDocuments(db: DB, user: User) {
+  if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
+  return db.transaction(async (tx) => {
+    const documents = await tx.query<{ file_path: string }>(
+      'SELECT file_path FROM documents',
+    );
+    for (const table of [
+      'document_notes',
+      'document_revisions',
+      'reading_progress',
+    ])
+      await tx.query(`DELETE FROM ${table}`);
+    await tx.query('DELETE FROM documents');
+    return {
+      count: documents.rows.length,
+      files: documents.rows.map((row) => row.file_path).filter(Boolean),
+    };
+  });
+}
 export async function restoreDocument(
   db: DB,
   id: string,

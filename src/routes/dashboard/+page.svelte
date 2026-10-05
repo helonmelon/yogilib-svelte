@@ -2,11 +2,16 @@
   import ArchiveList from '$lib/components/ArchiveList.svelte';
   import { goto } from '$app/navigation';
   import { api } from '$lib/client/api';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   let { data } = $props();
   let busy = $state(false);
   let error = $state('');
+  let confirmAll = $state(false);
   async function deleteAll() {
-    if (!confirm('Delete every document permanently? This cannot be undone.')) return;
+    confirmAll = true;
+  }
+  async function confirmDeleteAll() {
+    confirmAll = false;
     busy = true;
     error = '';
     try {
@@ -29,3 +34,11 @@
   </button>
 </div>
 <ArchiveList {data} admin />
+<ConfirmDialog
+  open={confirmAll}
+  title="Delete all documents?"
+  message="Every document, note, revision, and reading position will be permanently deleted."
+  busy={busy}
+  onconfirm={confirmDeleteAll}
+  oncancel={() => (confirmAll = false)}
+/>

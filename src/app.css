@@ -898,6 +898,26 @@ footer a {
   }
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(48 27 17 / 48%);
+}
+.modal-card {
+  width: min(100%, 30rem);
+  max-width: 30rem;
+  padding: 1.5rem;
+  background: var(--paper, #fffaf1);
+  border: 1px solid var(--line, #d8c7a8);
+  box-shadow: 0 1rem 3rem rgb(48 27 17 / 25%);
+}
+.modal-card h2 { margin-top: 0; }
+.modal-actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
+
 ::highlight(yogilib-notes) {
   background: #f6df96;
   color: inherit;

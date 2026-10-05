@@ -3,10 +3,17 @@
   import { invalidateAll } from '$app/navigation';
   import { api } from '$lib/client/api';
   import { categories } from '$lib/types';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   let { data, admin = false } = $props();
   let deleting = $state<string | null>(null);
+  let pendingDelete = $state<string | null>(null);
   async function deleteDocument(id: string) {
-    if (!confirm('Delete this document permanently? This cannot be undone.')) return;
+    pendingDelete = id;
+  }
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const id = pendingDelete;
+    pendingDelete = null;
     deleting = id;
     try {
       await api(`documents/${id}`, { method: 'DELETE' });
@@ -80,3 +87,11 @@
       >{/if}
   </div>
 </section>
+<ConfirmDialog
+  open={pendingDelete !== null}
+  title="Delete document?"
+  message="This document will be permanently deleted. This cannot be undone."
+  busy={deleting !== null}
+  onconfirm={confirmDelete}
+  oncancel={() => (pendingDelete = null)}
+/>

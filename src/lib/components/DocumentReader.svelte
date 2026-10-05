@@ -23,6 +23,7 @@
     saveProgress,
     acceptProgress,
   } from '$lib/client/offline';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   let { data } = $props();
   const doc = $derived(data.doc as ArchiveDocument);
   const user = $derived(data.session.user);
@@ -46,6 +47,7 @@
     localOriginal = $state(''),
     progress = $state<Progress>({ position: 0, version: 0 }),
     conflict = $state<Progress | null>(null);
+  let confirmDelete = $state(false), deleting = $state(false);
   let matches: Range[] = [];
   function status(e: unknown) {
     message = e instanceof Error ? e.message : String(e);
@@ -236,13 +238,18 @@
     }
   }
   async function remove() {
-    if (!confirm('Delete this document permanently? This cannot be undone.'))
-      return;
+    confirmDelete = true;
+  }
+  async function confirmRemove() {
+    confirmDelete = false;
+    deleting = true;
     try {
       await api(`documents/${doc.id}`, { method: 'DELETE' });
       await goto('/');
     } catch (e) {
       status(e);
+    } finally {
+      deleting = false;
     }
   }
   async function loadHistory() {
@@ -457,7 +464,15 @@
             : 'en'}
       >
         {@html doc.body_html}
-      </article>
+</article>
+<ConfirmDialog
+  open={confirmDelete}
+  title="Delete document?"
+  message="This document will be permanently deleted. This cannot be undone."
+  busy={deleting}
+  onconfirm={confirmRemove}
+  oncancel={() => (confirmDelete = false)}
+/>
       {#if doc.file_path}<div class="original">
           {#if /\.(png|jpe?g|webp)$/i.test(doc.file_path)}<img
               src={localOriginal || assetURL(doc.file_path)}

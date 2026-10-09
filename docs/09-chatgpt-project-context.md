@@ -1,12 +1,12 @@
 # Yogilib current context
 
-Updated 2026-10-05.
+Updated 2026-10-08.
 
 Yogilib uses SvelteKit and TypeScript on Node, with PostgreSQL, Capacitor mobile shells, IndexedDB browser downloads, native SQLite/filesystem downloads, and optional S3 originals.
 
 ## Current source
 
-- New Svelte remote (`origin`): https://github.com/helonmelon/yogilib-svelte
+- Source remote (`origin`): https://github.com/helonmelon/yogilib-svelte
 - Check Git status and remote refs before publishing changes.
 
 ## Architecture and product

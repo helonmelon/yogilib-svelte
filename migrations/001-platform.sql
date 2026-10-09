@@ -1,4 +1,4 @@
--- Additive, compatible with Yogilib v0.1. Explicit migration only on external Postgres.
+-- Additive schema update that preserves existing archive data. Explicit migration only on external Postgres.
 CREATE TABLE IF NOT EXISTS documents (
  id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, title_np TEXT, category TEXT,
  description TEXT, body_html TEXT, body_text TEXT, lang TEXT, script TEXT,

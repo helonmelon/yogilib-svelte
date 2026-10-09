@@ -321,7 +321,7 @@ describe('Archive API and role boundaries', () => {
   });
 });
 describe('Non-destructive migration', () => {
-  it('keeps legacy notes intact and can run twice', async () => {
+  it('keeps existing notes intact and can run twice', async () => {
     const raw = new PGlite();
     const db = wrapPglite(raw);
     await db.query(

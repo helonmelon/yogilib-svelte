@@ -77,6 +77,6 @@ Actual native compilation, physical-device testing, signing, app icons, store me
 - English/Nepali interface with original Nepali/Sanskrit/English archive text retained.
 - Queued private notes and reading-position synchronization with explicit conflict handling.
 
-The Store remains the existing informational placeholder. Payments, self-registration and password-reset flows were not present in the old application and are not added here.
+The Store is an informational placeholder. Payments, self-registration and password-reset flows are not implemented.
 
-Read [architecture](docs/architecture.md), [feature parity and validation](docs/verification.md), and [release guidance](docs/migration.md).
+Read [architecture](docs/architecture.md), [feature validation](docs/verification.md), and [release guidance](docs/migration.md).

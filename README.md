@@ -1,6 +1,6 @@
 # Yogilib 0.2 — Svelte website and mobile app
 
-Yogilib preserves Yogi Narharinath’s works and Nepal’s historical material. It uses SvelteKit, TypeScript and a Node server. A Capacitor build packages the shared interface for Android and iOS. PostgreSQL remains the shared database; downloaded works are stored separately on each device.
+Yogilib preserves Yogi Narharinath’s works and Nepal’s historical material. It uses SvelteKit, TypeScript and a Node server. A Capacitor build packages the shared interface for Android and iOS. PostgreSQL is the shared database for users, documents, notes and revisions.
 
 The project source is maintained at https://github.com/helonmelon/yogilib-svelte. Check Git status and remote refs before publishing changes.
 
@@ -15,7 +15,7 @@ npm run dev
 
 Open the address Vite prints on the computer running this command. The default development server uses PGlite, an embedded PostgreSQL engine, and saves disposable development data under `.local/postgres`.
 
-The login page has reader, uploader and admin demo buttons. These accounts exist only in PGlite development mode. The sample archive contains a treaty fixture, not the shared live archive. Uploads go to `.local/uploads` unless object storage is explicitly configured. Do not expose demo mode publicly.
+The archive homepage and `/document/:id` pages are public. Sign-in has two paths: **Continue with Google** is a disabled placeholder, and **Contributor login** (`/contributor-login`) takes an email and password. In PGlite development mode the contributor page also shows reader, uploader and admin demo buttons; those accounts exist only there. The sample archive contains a treaty fixture, not the shared live archive. Uploads go to `.local/uploads` unless object storage is explicitly configured. Do not expose demo mode publicly.
 
 ## Build and verify
 
@@ -23,8 +23,11 @@ The login page has reader, uploader and admin demo buttons. These accounts exist
 npm run check
 npm test
 npm run build
+npm run build:mobile   # set MOBILE_VALIDATE_ONLY=1 when no backend URL is configured
 npm run test:smoke
 ```
+
+> **Known issue:** `npm run test:smoke` currently fails at `/about`. `scripts/smoke.mjs` still expects the removed informational, store and excerpt routes, and still expects `/` to redirect to `/login` although the archive is now public. Update the script before relying on it.
 
 `test:smoke` starts a temporary production Node server with a disposable PGlite database, checks public pages and authenticated pages, then stops it. It does not use `.env.local` or mutate a shared database. For a local production-mode demo after building:
 
@@ -62,7 +65,7 @@ npm run mobile:android
 npm run mobile:ios
 ```
 
-`mobile:sync` builds a static mobile client and copies it into both native projects. The native client talks to the shared Node API; it does not bundle a Node server or PostgreSQL. Downloads use native SQLite plus app-private filesystem storage. Browser downloads use IndexedDB.
+`mobile:sync` builds a static mobile client and copies it into both native projects. The native client talks to the shared Node API; it does not bundle a Node server or PostgreSQL. The offline storage layer (native SQLite plus app-private files; IndexedDB in browsers) is still in the code, but no download button is currently shown in the reader.
 
 For a compile check without an online backend, use `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` (POSIX), or set `$env:MOBILE_VALIDATE_ONLY = '1'` first in PowerShell. This produces an intentionally unconfigured bundle and must not be distributed.
 
@@ -70,13 +73,19 @@ Actual native compilation, physical-device testing, signing, app icons, store me
 
 ## What is included
 
-- Public document reading, archive search and role-based editing.
-- Login, viewer/uploader/admin permissions, archive search and category filtering.
-- Uploads, original PDF/image reading, rich-text/source editing, Preeti and ITRANS conversion.
-- Private notes/highlights, passage links, reading tools, revision history and restore.
-- English/Nepali interface with original Nepali/Sanskrit/English archive text retained.
-- Queued private notes and reading-position synchronization with explicit conflict handling.
+- Public archive homepage with search and category filtering, and public document reading.
+- Google sign-in placeholder (disabled) and email/password contributor login.
+- Viewer, uploader and admin roles, all enforced on the server.
+- Uploads of original PDFs and images (PDF/PNG/JPEG/WebP, up to 50 MB), with original-file viewing.
+- Rich-text/source editing with an embedded Preeti/ITRANS converter (options dropdown) and a word count.
+- Private notes and highlights, passage links, reading tools, reading-position save/resume, revision history and restore.
+- Deletion with in-app confirmation: uploaders delete their own documents, admins delete any document, and the admin dashboard can delete all documents.
+- English/Nepali interface; original Nepali/Sanskrit/English archive text is retained.
+- Queued private notes and reading-position sync with explicit conflict handling.
 
-The Store is an informational placeholder. Payments, self-registration and password-reset flows are not implemented.
+## Removed or not implemented
 
-Read [architecture](docs/architecture.md), [feature validation](docs/verification.md), and [release guidance](docs/migration.md).
+- The downloads page, informational pages (about, works, mission, similar, store) and the excerpts section have been removed from navigation and routing. Their source content is still in `src/lib/content/`, and the offline download code (`src/lib/client/offline.ts`, `src/offline/`) remains, but the reader no longer offers a download button.
+- Google sign-in, payments, self-registration and password reset are not implemented.
+
+See the [project map](docs/projectmap.md) for where everything lives and what to do next. Read [architecture](docs/architecture.md), [feature validation](docs/verification.md), and [release guidance](docs/migration.md).

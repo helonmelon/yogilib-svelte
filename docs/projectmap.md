@@ -84,25 +84,24 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 
 ## 5. Current status (checked 2026-11-13, Node 22)
 
-| Check                                         | Result                                                   |
-| --------------------------------------------- | -------------------------------------------------------- |
-| `npm run check`                               | Pass, 0 errors / 0 warnings                              |
-| `npm test`                                    | Pass, 19 tests                                           |
-| `npm run build`                               | Pass                                                     |
-| `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                                                     |
-| `npm run test:smoke`                          | **Fails** at `/about`: the script expects removed routes |
-| Native Android/iOS build, device test         | Not done                                                 |
+| Check                                         | Result                      |
+| --------------------------------------------- | --------------------------- |
+| `npm run check`                               | Pass, 0 errors / 0 warnings |
+| `npm test`                                    | Pass, 19 tests              |
+| `npm run build`                               | Pass                        |
+| `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
+| `npm run test:smoke`                          | Pass                        |
+| Native Android/iOS build, device test         | Not done                    |
 
 ## 6. Next steps, in order
 
-1. **Fix the smoke test.** In `scripts/smoke.mjs`, remove `/about`, `/works`, `/mission`, `/similar`, `/store`, `/excerpts`, `/excerpts/sugowlee`; add `/contributor-login`; replace the "`/` redirects to `/login`" assertion with "`/` returns 200 for anonymous visitors". Re-run `npm run test:smoke`.
-2. **Bring the other docs in line.** `docs/architecture.md` still says the archive listing requires login and lists `src/lib/content/` as informational pages; `docs/verification.md` still lists informational pages, excerpts and downloaded reading as working features.
-3. **Decide on downloads.** The download button is gone but `download()` in `lib/client/offline.ts` and the `src/offline/` reader remain. Either restore a download button in `DocumentReader.svelte` or remove the dead code (and the cold-start offline shell, service worker and related tests).
-4. **Tidy leftovers.** Unused strings in `src/lib/i18n.ts` (Downloads, Excerpts, Mission, Store, …) and unused HTML in `src/lib/content/` (about, mission, works, similar, excerpt).
-5. **Login.** Either implement Google sign-in (server-side OAuth in `lib/server/auth.ts` + `api.ts`) or hide the disabled button. Localise the new login page strings through `$t(...)` (they are currently hard-coded English).
-6. **Safety on "Delete all documents".** It is permanent and also deletes originals; consider a typed confirmation and making sure backups exist before using it on the live archive.
-7. **Migration rehearsal.** Copy the live Neon archive to a development branch, review `migrations/001-platform.sql`, run `npm run db:migrate`, and check stored HTML appearance, passwords, attachments and revisions (see `docs/migration.md`).
-8. **Visual and device testing.** Review pages in a real browser (desktop and phone width), then compile and test Android/iOS on devices before any store work.
-9. **Release only with explicit approval.** Production deployment and store submission need separate authorisation.
+1. **Bring the other docs in line.** `docs/architecture.md` still says the archive listing requires login and lists `src/lib/content/` as informational pages; `docs/verification.md` still lists informational pages, excerpts and downloaded reading as working features.
+2. **Decide on downloads.** The download button is gone but `download()` in `lib/client/offline.ts` and the `src/offline/` reader remain. Either restore a download button in `DocumentReader.svelte` or remove the dead code (and the cold-start offline shell, service worker and related tests).
+3. **Tidy leftovers.** Unused strings in `src/lib/i18n.ts` (Downloads, Excerpts, Mission, Store, …) and unused HTML in `src/lib/content/` (about, mission, works, similar, excerpt).
+4. **Login.** Either implement Google sign-in (server-side OAuth in `lib/server/auth.ts` + `api.ts`) or hide the disabled button. Localise the new login page strings through `$t(...)` (they are currently hard-coded English).
+5. **Safety on "Delete all documents".** It is permanent and also deletes originals; consider a typed confirmation and making sure backups exist before using it on the live archive.
+6. **Migration rehearsal.** Copy the live Neon archive to a development branch, review `migrations/001-platform.sql`, run `npm run db:migrate`, and check stored HTML appearance, passwords, attachments and revisions (see `docs/migration.md`).
+7. **Visual and device testing.** Review pages in a real browser (desktop and phone width), then compile and test Android/iOS on devices before any store work.
+8. **Release only with explicit approval.** Production deployment and store submission need separate authorisation.
 
-Before every push: `npm run check`, `npm test`, `npm run build`, `npm run build:mobile`, and the smoke test once it is fixed.
+Before every push: `npm run check`, `npm test`, `npm run build`, `npm run build:mobile`, and `npm run test:smoke`.

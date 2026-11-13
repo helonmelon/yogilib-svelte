@@ -35,14 +35,10 @@ try {
   }
   assert(ready, 'Server did not become ready: ' + output);
   for (const path of [
+    '/',
+    '/?q=perpetual',
     '/login',
-    '/about',
-    '/works',
-    '/mission',
-    '/similar',
-    '/store',
-    '/excerpts',
-    '/excerpts/sugowlee',
+    '/contributor-login',
     '/document/1',
     '/offline/index.html',
     '/service-worker.js',
@@ -55,11 +51,16 @@ try {
       assert(html.includes('perpetual peace'));
       assert(!html.includes('undefined'));
     }
+    if (path === '/?q=perpetual')
+      assert((await r.text()).includes('सुगौली सन्धि'));
     console.log('HTTP 200', path);
   }
-  const redirect = await fetch(base + '/', { redirect: 'manual' });
-  assert.equal(redirect.status, 303);
-  assert.equal(redirect.headers.get('location'), '/login');
+  for (const path of ['/dashboard', '/upload', '/document/1/edit']) {
+    const r = await fetch(base + path, { redirect: 'manual' });
+    assert.equal(r.status, 303, path);
+    assert.equal(r.headers.get('location'), '/login', path);
+    console.log('Anonymous redirect to /login', path);
+  }
   const login = await fetch(base + '/api/demo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: base },

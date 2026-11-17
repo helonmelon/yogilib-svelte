@@ -1,5 +1,13 @@
 export type Role = 'viewer' | 'uploader' | 'admin';
-export type User = { id: string; email: string; role: Role };
+export type User = {
+  id: string;
+  email: string;
+  role: Role;
+  display_name?: string | null;
+  preferred_lang?: string | null;
+  interests?: string[];
+  onboarded?: boolean;
+};
 export type ArchiveDocument = {
   id: string;
   title: string;

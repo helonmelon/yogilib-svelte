@@ -1,7 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { database, isDemo } from './db';
-import { sessionUser, login, createSession, revokeSession } from './auth';
+import {
+  sessionUser,
+  login,
+  createSession,
+  revokeSession,
+  register,
+  completeOnboarding,
+} from './auth';
+import { audit, listAudit, exportArchive, archiveStats } from './audit';
+import { aiEnabled, askAI } from './ai';
+import { listProviders, startPayment, verifyPayment, listPayments } from './payments';
 import {
   Failure,
   getDocument,
@@ -42,6 +52,19 @@ const limits = new Map<string, { count: number; until: number }>();
 export function resetLoginLimits() {
   limits.clear();
 }
+/** Simple in-memory fixed-window limiter keyed by client address and bucket. */
+function throttle(key: string, max: number, windowMs = 600000) {
+  const now = Date.now();
+  const rate = limits.get(key);
+  if (rate && rate.until > now && rate.count >= max)
+    throw new Failure(429, 'Too many attempts. Try again later.');
+  if (limits.size > 10000)
+    for (const [k, v] of limits) if (v.until < now) limits.delete(k);
+  limits.set(key, {
+    count: rate && rate.until > now ? rate.count + 1 : 1,
+    until: rate && rate.until > now ? rate.until : now + windowMs,
+  });
+}
 export async function handleAPI(event: RequestEvent) {
   const { request, cookies, url } = event;
   const path = (event.params.path || '').split('/');
@@ -79,21 +102,13 @@ export async function handleAPI(event: RequestEvent) {
     };
     if (path[0] === 'session' && method === 'GET')
       return json({ user, demo: isDemo() });
+    let address = 'unknown';
+    try {
+      address = event.getClientAddress();
+    } catch {}
+    const origin = process.env.PUBLIC_APP_ORIGIN || url.origin;
     if (path[0] === 'login' && method === 'POST') {
-      let address = 'unknown';
-      try {
-        address = event.getClientAddress();
-      } catch {}
-      const now = Date.now();
-      const rate = limits.get(address);
-      if (rate && rate.until > now && rate.count >= 12)
-        throw new Failure(429, 'Too many attempts. Try again later.');
-      if (limits.size > 10000)
-        for (const [k, v] of limits) if (v.until < now) limits.delete(k);
-      limits.set(address, {
-        count: rate && rate.until > now ? rate.count + 1 : 1,
-        until: rate && rate.until > now ? rate.until : now + 600000,
-      });
+      throttle(address, 12);
       const b = await input(request);
       const u = await login(
         db,
@@ -103,6 +118,60 @@ export async function handleAPI(event: RequestEvent) {
       if (!u) throw new Failure(401, 'Invalid email or password.');
       limits.delete(address);
       return setSession(u);
+    }
+    if (path[0] === 'register' && method === 'POST') {
+      if (process.env.YOGILIB_REGISTRATION === 'closed')
+        throw new Failure(403, 'New reader accounts are not open right now.');
+      throttle('register:' + address, 5, 3600000);
+      const b = await input(request);
+      const created = await register(
+        db,
+        String(b.email || ''),
+        String(b.password || ''),
+        String(b.display_name || ''),
+      );
+      if ('error' in created) throw new Failure(400, created.error);
+      await audit(db, created, 'user.register', 'user', created.id);
+      return setSession(created);
+    }
+    if (path[0] === 'onboarding' && method === 'POST') {
+      const u = requireUser();
+      await completeOnboarding(db, u, await input(request));
+      await audit(db, u, 'user.onboard', 'user', u.id);
+      return json({ ok: true });
+    }
+    if (path[0] === 'stats' && method === 'GET') return json(await archiveStats(db));
+    if (path[0] === 'ai' && path[1] === 'status' && method === 'GET')
+      return json({ enabled: aiEnabled() });
+    if (path[0] === 'payments') {
+      if (path[1] === 'providers' && method === 'GET')
+        return json({ providers: listProviders() });
+      if (!path[1] && method === 'POST') {
+        throttle('pay:' + address, 20);
+        return json(await startPayment(db, user, await input(request), origin), { status: 201 });
+      }
+      if (path[1] && path[2] === 'verify' && method === 'POST') {
+        throttle('verify:' + address, 60);
+        return json(await verifyPayment(db, path[1]));
+      }
+      throw new Failure(405, 'Method not allowed');
+    }
+    if (path[0] === 'admin') {
+      const admin = requireUser('admin');
+      const offset = Math.max(0, Number(url.searchParams.get('offset') || 0) | 0);
+      if (path[1] === 'audit' && method === 'GET') return json(await listAudit(db, offset));
+      if (path[1] === 'payments' && method === 'GET') return json(await listPayments(db, offset));
+      if (path[1] === 'export' && method === 'GET') {
+        const data = await exportArchive(db);
+        await audit(db, admin, 'archive.export', 'archive', null, data.counts);
+        return new Response(JSON.stringify(data, null, 1), {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Disposition': `attachment; filename="yogilib-export-${data.exported_at.slice(0, 10)}.json"`,
+          },
+        });
+      }
+      throw new Failure(404, 'Not found');
     }
     if (path[0] === 'demo' && method === 'POST') {
       if (!isDemo()) throw new Failure(404, 'Not found');
@@ -123,7 +192,9 @@ export async function handleAPI(event: RequestEvent) {
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
-      const deleted = await deleteAllDocuments(db, requireUser('admin'));
+      const admin = requireUser('admin');
+      const deleted = await deleteAllDocuments(db, admin);
+      await audit(db, admin, 'document.delete_all', 'document', null, { count: deleted.count });
       await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
       return json({ ok: true, deleted: deleted.count });
     }
@@ -153,9 +224,9 @@ export async function handleAPI(event: RequestEvent) {
         if (file instanceof File && file.size) filePath = await saveMedia(file);
       } else b = await input(request);
       try {
-        return json(await saveDocument(db, { ...b, file_path: filePath }, u), {
-          status: 201,
-        });
+        const saved = await saveDocument(db, { ...b, file_path: filePath }, u);
+        await audit(db, u, 'document.create', 'document', String(saved.id), { title: saved.title });
+        return json(saved, { status: 201 });
       } catch (e) {
         if (filePath) await removeMedia(filePath).catch(() => {});
         throw e;
@@ -164,17 +235,16 @@ export async function handleAPI(event: RequestEvent) {
     if (!id) throw new Failure(405, 'Method not allowed');
     if (path.length === 2) {
       if (method === 'GET') return json(documentRow(await getDocument(db, id)));
-      if (method === 'PUT')
-        return json(
-          await saveDocument(
-            db,
-            await input(request),
-            requireUser('admin'),
-            id,
-          ),
-        );
+      if (method === 'PUT') {
+        const admin = requireUser('admin');
+        const saved = await saveDocument(db, await input(request), admin, id);
+        await audit(db, admin, 'document.update', 'document', id, { title: saved.title });
+        return json(saved);
+      }
       if (method === 'DELETE') {
-        const deleted = await deleteDocument(db, id, requireUser('uploader'));
+        const u = requireUser('uploader');
+        const deleted = await deleteDocument(db, id, u);
+        await audit(db, u, 'document.delete', 'document', id);
         await removeMedia(deleted.file_path).catch(() => {});
         return json({ ok: true });
       }
@@ -249,8 +319,13 @@ export async function handleAPI(event: RequestEvent) {
         return json(updated.rows[0]);
       }
     }
+    if (path[2] === 'ai' && method === 'POST') {
+      const u = requireUser();
+      const doc = await getDocument(db, id);
+      return json(await askAI(db, u, doc as any, await input(request)));
+    }
     if (path[2] === 'revisions') {
-      requireUser('admin');
+      const admin = requireUser('admin');
       await getDocument(db, id);
       if (method === 'GET') {
         const r = await db.query(
@@ -263,7 +338,9 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        const restored = await restoreDocument(db, id, path[3], String(b.version));
+        await audit(db, admin, 'document.restore', 'document', id, { revision: path[3] });
+        return json(restored);
       }
     }
     throw new Failure(405, 'Method not allowed');

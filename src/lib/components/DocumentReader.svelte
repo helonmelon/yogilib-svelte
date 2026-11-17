@@ -21,6 +21,7 @@
     acceptProgress,
   } from '$lib/client/offline';
   import ConfirmDialog from './ConfirmDialog.svelte';
+  import AICompanion from './AICompanion.svelte';
   let { data } = $props();
   const doc = $derived(data.doc as ArchiveDocument);
   const user = $derived(data.session.user);
@@ -460,6 +461,7 @@
             >{/if}
         </div>{/if}
     </div>
+    <AICompanion docId={doc.id} {user} passage={quote} />
     <section class="notes">
       <h2>{$t('Private notes')}</h2>
       {#if user}<p>

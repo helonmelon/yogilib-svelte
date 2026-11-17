@@ -27,8 +27,6 @@ npm run build:mobile   # set MOBILE_VALIDATE_ONLY=1 when no backend URL is confi
 npm run test:smoke
 ```
 
-> **Known issue:** `npm run test:smoke` currently fails at `/about`. `scripts/smoke.mjs` still expects the removed informational, store and excerpt routes, and still expects `/` to redirect to `/login` although the archive is now public. Update the script before relying on it.
-
 `test:smoke` starts a temporary production Node server with a disposable PGlite database, checks public pages and authenticated pages, then stops it. It does not use `.env.local` or mutate a shared database. For a local production-mode demo after building:
 
 ```sh
@@ -82,10 +80,14 @@ Actual native compilation, physical-device testing, signing, app icons, store me
 - Deletion with in-app confirmation: uploaders delete their own documents, admins delete any document, and the admin dashboard can delete all documents.
 - English/Nepali interface; original Nepali/Sanskrit/English archive text is retained.
 - Queued private notes and reading-position sync with explicit conflict handling.
+- Free reader sign-up (`/join`) with a three-step welcome (`/welcome`) for language, interests and a tour.
+- Admin activity log, JSON archive backup export and public archive stats.
+- AI reading companion (summarise, explain a passage, ask a question) using Claude. Off unless `ANTHROPIC_API_KEY` is set; rate-limited per reader.
+- Contributions page (`/support`) with eSewa, Khalti and Stripe adapters. Each is hidden until configured and sandboxed by default. See [growth guide](docs/growth.md) for what remains before going live.
 
 ## Removed or not implemented
 
 - The downloads page, informational pages (about, works, mission, similar, store) and the excerpts section have been removed from navigation and routing. Their source content is still in `src/lib/content/`, and the offline download code (`src/lib/client/offline.ts`, `src/offline/`) remains, but the reader no longer offers a download button.
-- Google sign-in, payments, self-registration and password reset are not implemented.
+- Google sign-in, password reset, Fonepay QR and refunds are not implemented. Payment adapters have not been tested against real gateways.
 
 See the [project map](docs/projectmap.md) for where everything lives and what to do next. Read [architecture](docs/architecture.md), [feature validation](docs/verification.md), and [release guidance](docs/migration.md).

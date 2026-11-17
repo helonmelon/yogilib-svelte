@@ -984,3 +984,44 @@ footer a {
   background: #f6df96;
   color: inherit;
 }
+
+/* Onboarding, AI companion, support and records */
+.muted { color: var(--muted); }
+.button.primary, a.button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.join-cta { display: block; text-align: center; margin: 1rem 0 0.5rem; }
+.quiet-link { margin-right: 0.6rem; }
+.hero { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: end; justify-content: space-between; max-width: 1120px; margin: 2.5rem auto -1.5rem; padding: 0 2rem 1.5rem; }
+.hero h1 { font-family: var(--serif); color: var(--brown); font-size: clamp(1.4rem, 3.4vw, 2.1rem); line-height: 1.25; margin: 0.3rem 0 0.5rem; max-width: 34ch; }
+.hero p { margin: 0; max-width: 60ch; color: var(--muted); }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.welcome { max-width: 640px; margin: 2rem auto; }
+.welcome h1 { font-family: var(--serif); color: var(--brown); }
+.steps { display: flex; gap: 0.4rem; list-style: none; padding: 0; margin: 0 0 1rem; font-size: 0.85rem; }
+.steps li { flex: 1; padding: 0.35rem 0.5rem; border-top: 3px solid var(--line); color: var(--muted); }
+.steps li.current { border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.steps li.done { border-color: var(--brown); }
+.choice-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; align-items: center; }
+.choice-row button.chosen, .choice-row button[aria-pressed='true'] { background: var(--cream); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.tour { padding-left: 1.1rem; line-height: 1.7; }
+.ai-companion { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--cream); padding: 0.9rem 1rem; margin: 1.25rem 0; border-radius: 4px; }
+.ai-companion h2 { margin-top: 0; }
+.ai-badge { font-size: 0.7rem; letter-spacing: 0.06em; background: var(--accent); color: #fff; padding: 0.1rem 0.35rem; border-radius: 3px; vertical-align: middle; }
+.ai-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+.ai-companion form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; }
+.ai-companion form label { flex: 1 1 14rem; }
+.ai-answer { background: #fff; border: 1px solid var(--line); padding: 0.75rem; margin-top: 0.75rem; white-space: pre-wrap; }
+.ai-answer small { color: var(--muted); }
+.support .lede { max-width: 65ch; }
+.support-form { max-width: 560px; }
+.support-form fieldset { border: 0; padding: 0; margin: 0 0 1rem; }
+.support-form legend { font-weight: 600; margin-bottom: 0.4rem; }
+.support-form h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0.6rem 0 0.2rem; }
+.radio { display: flex; gap: 0.6rem; align-items: center; padding: 0.35rem 0; margin: 0; font-weight: 500; }
+.radio input { width: auto; margin: 0; accent-color: var(--accent); flex: none; }
+.support, .welcome-wrap { max-width: 1120px; margin: 2.5rem auto; padding: 0 2rem; }
+.support-form small { display: block; margin-top: 0.6rem; }
+.mast-actions .button { white-space: nowrap; }
+@media (max-width: 700px) { .support { padding: 0 1rem; margin-top: 1.5rem; } .welcome { margin: 1.25rem 1rem; } .hero { padding: 0 1rem 1.25rem; margin-top: 1.5rem; } }
+.records { margin-bottom: 1rem; overflow-x: auto; }
+.records table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.records th, .records td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line); }

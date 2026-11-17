@@ -116,11 +116,12 @@
       ><option value="en">English</option><option value="ne">नेपाली</option
       ></select
     >{#if user}<button class="quiet" onclick={logout}>{$t('Logout')}</button
-      >{:else}<a class="button" href="/login">{$t('Login')}</a>{/if}
+      >{:else}<a class="quiet-link" href="/login">{$t('Login')}</a><a class="button" href="/join">{$t('Join free')}</a>{/if}
   </div>
 </header>
 <nav class="navigation" aria-label="Main">
   <a class:active={$page.url.pathname === '/'} href="/">{$t('Archive')}</a
+  ><a class:active={$page.url.pathname.startsWith('/support')} href="/support">{$t('Support')}</a
   >{#if user?.role === 'admin' || user?.role === 'uploader'}<a href="/upload"
       >{$t('Upload')}</a
     >{/if}{#if user?.role === 'admin'}<a href="/dashboard">{$t('Dashboard')}</a
@@ -132,6 +133,9 @@
       >{/if}</span
   >
 </nav>
+{#if user && !user.onboarded && user.role === 'viewer' && !$page.url.pathname.startsWith('/welcome')}<div class="notice" role="status">
+    {$t('Finish setting up your reader account.')} <a href="/welcome">{$t('Continue')}</a>
+  </div>{/if}
 {#if notice}<div class="notice" role="status">
     {$t(notice)}
     <button class="quiet" onclick={() => (notice = '')}>{$t('Close')}</button>

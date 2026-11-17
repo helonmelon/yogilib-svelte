@@ -35,14 +35,11 @@ try {
   }
   assert(ready, 'Server did not become ready: ' + output);
   for (const path of [
+    '/',
     '/login',
-    '/about',
-    '/works',
-    '/mission',
-    '/similar',
-    '/store',
-    '/excerpts',
-    '/excerpts/sugowlee',
+    '/contributor-login',
+    '/join',
+    '/support',
     '/document/1',
     '/offline/index.html',
     '/service-worker.js',
@@ -57,9 +54,19 @@ try {
     }
     console.log('HTTP 200', path);
   }
-  const redirect = await fetch(base + '/', { redirect: 'manual' });
-  assert.equal(redirect.status, 303);
-  assert.equal(redirect.headers.get('location'), '/login');
+  const welcome = await fetch(base + '/welcome', { redirect: 'manual' });
+  assert.equal(welcome.status, 303);
+  assert.equal(welcome.headers.get('location'), '/join');
+  const reader = await fetch(base + '/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({ email: 'smoke@example.invalid', password: 'smoke-test-password' }),
+  });
+  assert.equal(reader.status, 200);
+  assert.equal((await reader.json()).user.role, 'viewer');
+  const readerCookie = reader.headers.get('set-cookie').split(';')[0];
+  assert.equal((await fetch(base + '/welcome', { headers: { Cookie: readerCookie } })).status, 200);
+  console.log('Reader registration and /welcome checks passed');
   const login = await fetch(base + '/api/demo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: base },

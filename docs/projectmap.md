@@ -52,7 +52,7 @@ Other top-level pieces:
 | `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
 | `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
 | `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, this map                          |
+| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
 
 ## 3. How a request flows
 

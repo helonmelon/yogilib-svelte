@@ -27,9 +27,7 @@ npm run build:mobile   # set MOBILE_VALIDATE_ONLY=1 when no backend URL is confi
 npm run test:smoke
 ```
 
-> **Known issue:** `npm run test:smoke` currently fails at `/about`. `scripts/smoke.mjs` still expects the removed informational, store and excerpt routes, and still expects `/` to redirect to `/login` although the archive is now public. Update the script before relying on it.
-
-`test:smoke` starts a temporary production Node server with a disposable PGlite database, checks public pages and authenticated pages, then stops it. It does not use `.env.local` or mutate a shared database. For a local production-mode demo after building:
+`test:smoke` starts a temporary production Node server with a disposable PGlite database, checks public pages (archive, search, login, documents, offline shell), confirms that protected pages redirect anonymous visitors to `/login`, checks admin pages, then stops it. It does not use `.env.local` or mutate a shared database. For a local production-mode demo after building:
 
 ```sh
 # POSIX shell

@@ -10,6 +10,7 @@ import { handle } from '../src/hooks.server';
 import { safeHTML } from '../src/lib/server/archive';
 import { preetiToUnicode } from '../src/lib/converters/preeti-unicode';
 import { itransToUnicode } from '../src/lib/converters/itrans-unicode';
+import { MAX_UPLOAD_BYTES } from '../src/lib/limits';
 let temp: string;
 const jars: Record<string, Map<string, string>> = {};
 async function call(path: string, method = 'GET', body?: any, who = 'public') {
@@ -272,6 +273,16 @@ describe('Archive API and role boundaries', () => {
     bad.set('category', 'कागजात');
     bad.set('file', new File(['<script>bad()</script>'], 'sample.pdf'));
     expect((await call('documents', 'POST', bad, 'uploader')).status).toBe(400);
+    const big = new FormData();
+    big.set('title', 'Too large');
+    big.set('category', 'कागजात');
+    const bytes = new Uint8Array(MAX_UPLOAD_BYTES + 1);
+    bytes.set(Buffer.from('%PDF-'));
+    big.set(
+      'file',
+      new File([bytes], 'large.pdf', { type: 'application/pdf' }),
+    );
+    expect((await call('documents', 'POST', big, 'uploader')).status).toBe(413);
   });
   it('blocks script execution without translating archive text', () => {
     const safe = safeHTML(

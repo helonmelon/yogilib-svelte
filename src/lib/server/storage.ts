@@ -8,6 +8,7 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Failure } from './archive';
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from '../limits';
 const root = () => resolve(process.env.YOGILIB_UPLOAD_DIR || '.local/uploads');
 const client = () =>
   new S3Client({
@@ -24,8 +25,8 @@ export const mediaType = (key: string) =>
     '.webp': 'image/webp',
   })[extname(key).toLowerCase()] || 'application/octet-stream';
 export async function saveMedia(file: File) {
-  if (file.size > 50 * 1024 * 1024)
-    throw new Failure(413, 'Maximum upload size is 50 MB');
+  if (file.size > MAX_UPLOAD_BYTES)
+    throw new Failure(413, `Maximum upload size is ${MAX_UPLOAD_MB} MB`);
   const bytes = Buffer.from(await file.arrayBuffer());
   const ext = extname(file.name).toLowerCase();
   const valid =

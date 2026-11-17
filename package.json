@@ -12,7 +12,7 @@
     "build": "npm run build:offline && vite build",
     "build:mobile": "node scripts/check-mobile.mjs && cross-env MOBILE_BUILD=1 VITE_MOBILE=1 vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "start": "cross-env BODY_SIZE_LIMIT=55M node --env-file-if-exists=.env.local build",
+    "start": "cross-env BODY_SIZE_LIMIT=32M node --env-file-if-exists=.env.local build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/migrate.ts",

@@ -74,7 +74,7 @@ Actual native compilation, physical-device testing, signing, app icons, store me
 - Public archive homepage with search and category filtering, and public document reading.
 - Google sign-in placeholder (disabled) and email/password contributor login.
 - Viewer, uploader and admin roles, all enforced on the server.
-- Uploads of original PDFs and images (PDF/PNG/JPEG/WebP, up to 50 MB), with original-file viewing.
+- Uploads of original PDFs and images (PDF/PNG/JPEG/WebP, up to 30 MB), with original-file viewing.
 - Rich-text/source editing with an embedded Preeti/ITRANS converter (options dropdown) and a word count.
 - Private notes and highlights, passage links, reading tools, reading-position save/resume, revision history and restore.
 - Deletion with in-app confirmation: uploaders delete their own documents, admins delete any document, and the admin dashboard can delete all documents.

@@ -34,17 +34,17 @@ within the free tiers.
 
 ### Known gaps to close before launch
 
-1. **Upload size.** Cloud Run limits HTTP/1 request bodies to 32 MiB, but the
-   app accepts up to 50 MB. Cap uploads at 30 MB, or move to direct-to-R2
+1. ~~**Upload size.**~~ Done 2026-11-17: uploads are capped at 30 MB
+   (`src/lib/limits.ts`) and `BODY_SIZE_LIMIT` is 32M, under Cloud Run's
+   32 MiB HTTP/1 request limit. Larger originals would need direct-to-R2
    presigned uploads.
 2. **No local disk.** Cloud Run storage is temporary. `S3_BUCKET` must be set
    so uploads go to R2, not `.local/uploads`.
 3. **Production settings.** Set `ORIGIN`/`PUBLIC_APP_ORIGIN` to the real
    domain, leave `YOGILIB_DATABASE` unset, and never enable PGlite demo
    accounts publicly.
-4. **Smoke test.** Merge the smoke-test fix
-   (https://github.com/helonmelon/yogilib-svelte/pull/1) so the smoke test
-   (`npm run test:smoke`) passes before the first deploy.
+4. ~~**Smoke test.**~~ Done 2026-11-17: the smoke-test fix
+   (https://github.com/helonmelon/yogilib-svelte/pull/1) is merged into `main`.
 5. **Accounts.** There is no self-registration. Create the first admin
    directly in the database.
 

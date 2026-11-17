@@ -4,6 +4,7 @@
   import { t, dirty } from '$lib/i18n';
   import { api, send } from '$lib/client/api';
   import { categories, type ArchiveDocument } from '$lib/types';
+  import { MAX_UPLOAD_MB } from '$lib/limits';
   import { preetiToUnicode } from '$lib/converters/preeti-unicode';
   import { itransToUnicode } from '$lib/converters/itrans-unicode';
   import 'quill/dist/quill.snow.css';
@@ -302,7 +303,7 @@
             onchange={(e) => (file = e.currentTarget.files?.[0] || null)}
           /></label
         >
-        <p class="muted">PDF, PNG, JPEG, WebP · 50 MB</p>
+        <p class="muted">PDF, PNG, JPEG, WebP · {MAX_UPLOAD_MB} MB</p>
       </div>{/if}{#if error}<p class="error" role="alert">{$t(error)}</p>{/if}
     <div class="form-actions">
       <a class="button" href={doc ? '/document/' + doc.id : '/'}

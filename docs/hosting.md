@@ -47,6 +47,13 @@ within the free tiers.
    (https://github.com/helonmelon/yogilib-svelte/pull/1) is merged into `main`.
 5. **Accounts.** There is no self-registration. Create the first admin
    directly in the database.
+6. **Old seed accounts (launch blocker).** The original Go app seeded
+   `admin@yogilib.org` and `upload@yogilib.org` with weak passwords, and those
+   passwords are visible in this public repo's early history. Before the site
+   goes live, check the live Neon `users` table for both emails and delete them
+   or set new strong passwords. The migration keeps existing passwords, so it
+   will not remove them. The current code seeds only random-password demo
+   accounts, and only in PGlite.
 
 ### Fallback
 

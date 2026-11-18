@@ -90,6 +90,10 @@ const added: Record<string, string> = {
   'Revision history': 'संशोधन इतिहास',
   'Restore this version': 'यो संस्करण पुनःस्थापना गर्नुहोस्',
   'No previous versions yet.': 'अघिल्लो संस्करण छैन।',
+  'Export archive': 'अभिलेखालय निर्यात गर्नुहोस्',
+  'Journal intact': 'अभिलेख-पञ्जिका सुरक्षित',
+  'Journal broken at entry': 'अभिलेख-पञ्जिका बिग्रिएको प्रविष्टि',
+  entries: 'प्रविष्टिहरू',
 };
 export const t = derived(locale, (lang) => (key: string) => {
   const item = (catalog as Record<string, Record<string, string>>)[key];

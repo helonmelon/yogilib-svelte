@@ -324,11 +324,110 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
+  });
+});
+describe('Archive journal and export', () => {
+  it('chains every archive change and replays to the live archive', async () => {
+    const created = await call(
+      'documents',
+      'POST',
+      {
+        title: 'जर्नल परीक्षण',
+        category: 'कागजात',
+        body_html: '<p>ॐ पहिलो</p>',
+      },
+      'admin',
+    );
+    expect(created.status).toBe(201);
+    const id = created.data.id;
+    const updated = await call(
+      'documents/' + id,
+      'PUT',
+      { ...created.data, body_html: '<p>ॐ दोस्रो</p>' },
+      'admin',
+    );
+    expect(updated.status).toBe(200);
+    const extra = await call(
+      'documents',
+      'POST',
+      { title: 'Second', category: 'कागजात', body_html: '<p>x</p>' },
+      'uploader',
+    );
+    expect(
+      (
+        await call(
+          'documents/' + extra.data.id,
+          'DELETE',
+          undefined,
+          'uploader',
+        )
+      ).status,
+    ).toBe(200);
+
+    expect(
+      (await call('archive/verify', 'GET', undefined, 'viewer')).status,
+    ).toBe(403);
+    expect((await call('archive/export')).status).toBe(401);
+    const verify = await call('archive/verify', 'GET', undefined, 'admin');
+    expect(verify.data.ok).toBe(true);
+    expect(verify.data.count).toBeGreaterThanOrEqual(4);
+
+    const { readEvents, replay } = await import('../src/lib/server/journal');
+    const db = await database();
+    const events = await readEvents(db, 0, 1000);
+    const live = await db.query('SELECT id FROM documents ORDER BY id');
+    const state = replay(events);
+    expect([...state.keys()].sort()).toEqual(
+      live.rows.map((r) => String(r.id)).sort(),
+    );
+    expect(state.get(id)?.body_html).toBe('<p>ॐ दोस्रो</p>');
+
+    const bundle = await call('archive/export', 'GET', undefined, 'admin');
+    expect(bundle.data.format).toBe('yogilib-archive/1');
+    expect(bundle.data.journal.hash).toBe(verify.data.head);
+    const doc = bundle.data.documents.find((d: any) => d.id === id);
+    expect(doc.title).toBe('जर्नल परीक्षण');
+    expect(JSON.stringify(bundle.data)).not.toContain('password_hash');
+    expect(bundle.data.revisions.some((r: any) => r.document_id === id)).toBe(
+      true,
+    );
+  });
+  it('detects a tampered journal entry', async () => {
+    const db = await database();
+    const { verifyJournal } = await import('../src/lib/server/journal');
+    const first = await db.query(
+      'SELECT seq,payload FROM archive_events ORDER BY seq LIMIT 1',
+    );
+    const original = first.rows[0].payload;
+    await db.query('UPDATE archive_events SET payload=$1 WHERE seq=$2', [
+      JSON.stringify({ ...original, title: 'altered' }),
+      first.rows[0].seq,
+    ]);
+    const result = await verifyJournal(db);
+    expect(result.ok).toBe(false);
+    expect(result.broken_at).toBe(String(first.rows[0].seq));
+    await db.query('UPDATE archive_events SET payload=$1 WHERE seq=$2', [
+      JSON.stringify(original),
+      first.rows[0].seq,
+    ]);
+    expect((await verifyJournal(db)).ok).toBe(true);
+  });
+  it('hashes canonically regardless of key order', async () => {
+    const { canonical } = await import('../src/lib/server/journal');
+    expect(canonical({ b: 1, a: { d: 'ॐ', c: [2, 1] } })).toBe(
+      canonical({ a: { c: [2, 1], d: 'ॐ' }, b: 1 }),
+    );
   });
 });
 describe('Non-destructive migration', () => {

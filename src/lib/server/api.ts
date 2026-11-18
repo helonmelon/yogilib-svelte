@@ -12,6 +12,7 @@ import {
   deleteAllDocuments,
   restoreDocument,
 } from './archive';
+import { exportArchive, readEvents, verifyJournal } from './journal';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
 import type { User } from '../types';
 async function input(request: Request) {
@@ -120,11 +121,32 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'archive' && method === 'GET') {
+      requireUser('admin');
+      if (path[1] === 'export') {
+        const bundle = await exportArchive(db);
+        return json(bundle, {
+          headers: {
+            'Content-Disposition': `attachment; filename="yogilib-archive-${bundle.exported_at.slice(0, 10)}.json"`,
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
+      if (path[1] === 'journal') {
+        const after = Number(url.searchParams.get('after') || 0);
+        if (!Number.isSafeInteger(after) || after < 0)
+          throw new Failure(400, 'Invalid page');
+        return json(await readEvents(db, after, 100));
+      }
+      if (path[1] === 'verify') return json(await verifyJournal(db));
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -263,7 +285,9 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(db, id, path[3], String(b.version), user!),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

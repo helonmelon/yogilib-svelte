@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { DB } from './db';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
+import { record, documentPayload } from './journal';
 export class Failure extends Error {
   constructor(
     public status: number,
@@ -166,7 +167,9 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const saved = await getDocument(tx, id);
+      await record(tx, 'update', id, user.id, documentPayload(saved));
+      return documentRow(saved);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -178,6 +181,13 @@ export async function saveDocument(
     const r = await tx.query(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
+    );
+    await record(
+      tx,
+      'create',
+      String(r.rows[0].id),
+      user.id,
+      documentPayload(r.rows[0]),
     );
     return documentRow(r.rows[0]);
   });
@@ -194,6 +204,7 @@ export async function deleteDocument(db: DB, id: string, user: User) {
     ])
       await tx.query(`DELETE FROM ${table} WHERE document_id=$1`, [id]);
     await tx.query('DELETE FROM documents WHERE id=$1', [id]);
+    await record(tx, 'delete', id, user.id, { title: d.title });
     return d;
   });
 }
@@ -210,6 +221,9 @@ export async function deleteAllDocuments(db: DB, user: User) {
     ])
       await tx.query(`DELETE FROM ${table}`);
     await tx.query('DELETE FROM documents');
+    await record(tx, 'delete_all', null, user.id, {
+      count: documents.rows.length,
+    });
     return {
       count: documents.rows.length,
       files: documents.rows.map((row) => row.file_path).filter(Boolean),
@@ -221,6 +235,7 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  user?: User,
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +255,11 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const restored = await getDocument(tx, id);
+    await record(tx, 'restore', id, user?.id ?? null, {
+      ...documentPayload(restored),
+      revision,
+    });
+    return documentRow(restored);
   });
 }

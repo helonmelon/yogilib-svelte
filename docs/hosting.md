@@ -1,4 +1,4 @@
-# Hosting plan (draft, 2026-11-17)
+# Hosting plan (draft, updated 2026-11-18)
 
 Goal: put the public archive online this week, as cheaply as possible, at a
 short `.org` domain. Nothing here is deployed yet. Production deployment still
@@ -6,18 +6,52 @@ needs explicit approval (see `CLAUDE.md`).
 
 ## Domain
 
-| Name          | Status on 2026-11-17 (registry RDAP lookup) |
-| ------------- | ------------------------------------------- |
-| `yogilib.org` | Not registered                              |
-| `yogilib.com` | Not registered                              |
-| `yogilib.net` | Not registered                              |
+**Recommendation: buy `yogilib.org` at Cloudflare Registrar.** It costs about
+$8.50 the first year and $11.20 a year after that, about $53.30 over five
+years, the lowest five-year total found. Cloudflare sells at cost and is
+already the DNS provider in this plan (its registrar requires Cloudflare DNS).
+It includes WHOIS privacy and has no renewal mark-up. Turn on auto-renew.
 
-Registry "not found" means the name is not taken; a registrar's checkout is the
-final word (some names are reserved or premium). Typical `.org` prices in late
-2026: about $8–8.50 the first year at Porkbun or Cloudflare Registrar, and
-about $11.20 a year to renew at Cloudflare, which sells at cost. Buy the
-`.org` first. Add the `.com` only if it is worth about $10 a year to stop
-someone else taking it.
+### Availability (registry RDAP lookups, 2026-11-18)
+
+| Name                   | Status                                       |
+| ---------------------- | -------------------------------------------- |
+| `yogilib.org`          | Not registered                               |
+| `yogilib.com`          | Not registered                               |
+| `yogilib.net`          | Not registered                               |
+| `yogilibrary.org`      | Not registered                               |
+| `narharinath.org`      | Not registered                               |
+| `yoginarharinath.org`  | Not registered                               |
+| `yogilib.info`, `.app` | Not checked (registry host not allowed here) |
+
+The lookups were checked against `wikipedia.org` and `google.com`, which
+return as registered. "Not registered" means nobody owns the name. Premium or
+reserved pricing only shows at a registrar's checkout, so confirm the price
+there before paying.
+
+### `.org` prices (third-party comparisons, Oct–Nov 2026)
+
+| Registrar  | First year    | Renewal | 5-year total |
+| ---------- | ------------- | ------- | ------------ |
+| Cloudflare | $8.50         | $11.20  | ~$53.30      |
+| Porkbun    | $6.98         | $11.84  | ~$54.34      |
+| Dynadot    | $7.99         | $11.64  | ~$54.55      |
+| Namecheap  | $7.44 (promo) | $15.38  | ~$68.96      |
+
+The .org registry raised its wholesale price to $11.00 on 2026-06-01. Prices
+move, so check the registrar's own page at checkout.
+
+### Optional extras
+
+- **`yogilib.com`:** about $10.50–11 a year at Cloudflare, Dynadot or Porkbun
+  (Namecheap renews at about $18.68). Worth it only to stop someone else
+  taking it; it can redirect to `yogilib.org`.
+- **`.np`:** `.org.np` and `.com.np` are free from the NIC registry
+  (register.com.np, run by Mercantile). But `.org.np` needs an organization
+  registration certificate (for example an NGO or trust registered with the
+  District Administration Office), and the name must match the registered
+  organization. Approval takes a few working days. It's only an option if a
+  registered Yogilib or Narharinath organization exists.
 
 ## Cheapest stack that fits the current code
 

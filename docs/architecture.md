@@ -23,7 +23,9 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/content/`                         | Preserved informational and sample archive content          |
 | `src/lib/converters/`                      | Preeti and ITRANS converters                                |
 | `src/offline/`                             | Small standalone browser cold-start offline reader          |
+| `src/lib/server/ledger.ts`                 | Append-only, hash-chained archive ledger, verify and replay |
 | `migrations/001-platform.sql`              | Additive shared database schema                             |
+| `migrations/002-ledger.sql`                | Additive ledger table (`archive_events`)                    |
 | `android/`, `ios/`                         | Native Capacitor project scaffolds                          |
 
 ## Runtime and data flow
@@ -33,6 +35,10 @@ The website runs on a Node server using SvelteKit’s Node adapter. Its server-s
 PostgreSQL stores documents, users, private notes, revision snapshots, session hashes and reading positions. Document column names and IDs are preserved. An additive migration adds nullable note idempotency keys, session storage, reading progress and a search index. External-database startup never runs this migration implicitly.
 
 The default development environment uses the WASM PostgreSQL engine PGlite, not a mocked JSON database. It is single-process development storage, not a substitute for a production PostgreSQL service. It seeds only the development archive.
+
+## Archive ledger
+
+Every shared-archive change (create, update, restore, delete, delete-all) is appended to `archive_events` in the same transaction as the change. Each event is hashed with canonical JSON and links to the previous hash, so editing or removing history is detectable. Admins see verification on the dashboard and can export the full history as NDJSON (`/api/ledger/export`). Private notes and reading progress are not journaled. On external Postgres, journaling starts only after `002-ledger` has been explicitly migrated. See `docs/vision.md` for where this is heading.
 
 ## Offline behavior and conflict policy
 

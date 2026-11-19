@@ -12,6 +12,8 @@ import {
   deleteAllDocuments,
   restoreDocument,
 } from './archive';
+import { verifyLedger, recentEvents, events, ledgerEnabled } from './ledger';
+import type { DB } from './db';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
 import type { User } from '../types';
 async function input(request: Request) {
@@ -37,6 +39,30 @@ async function input(request: Request) {
   } catch {
     throw new Failure(400, 'Invalid JSON');
   }
+}
+/** Stream the whole ledger as NDJSON: a portable, verifiable copy of the archive's history. */
+async function ledgerExport(db: DB) {
+  if (!(await ledgerEnabled(db)))
+    throw new Failure(409, 'The ledger migration has not been applied.');
+  const source = events(db);
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const next = await source.next();
+      if (next.done) controller.close();
+      else controller.enqueue(encoder.encode(JSON.stringify(next.value) + '\n'));
+    },
+    async cancel() {
+      await source.return(undefined);
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Content-Disposition': `attachment; filename="yogilib-ledger-${new Date().toISOString().slice(0, 10)}.ndjson"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 }
 const limits = new Map<string, { count: number; until: number }>();
 export function resetLoginLimits() {
@@ -119,6 +145,15 @@ export async function handleAPI(event: RequestEvent) {
       await revokeSession(db, cookies.get('yogilib-session'));
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
+    }
+    if (path[0] === 'ledger' && method === 'GET') {
+      requireUser('admin');
+      if (path[1] === 'export') return ledgerExport(db);
+      if (!path[1])
+        return json({
+          verification: await verifyLedger(db),
+          events: await recentEvents(db),
+        });
     }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
@@ -250,7 +285,7 @@ export async function handleAPI(event: RequestEvent) {
       }
     }
     if (path[2] === 'revisions') {
-      requireUser('admin');
+      const admin = requireUser('admin');
       await getDocument(db, id);
       if (method === 'GET') {
         const r = await db.query(
@@ -263,7 +298,9 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(db, id, path[3], String(b.version), admin.id),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

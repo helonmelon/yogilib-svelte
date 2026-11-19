@@ -330,6 +330,28 @@ describe('Archive API and role boundaries', () => {
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
   });
+  it('shows the verified ledger and its export to admins only', async () => {
+    for (const who of ['public', 'viewer', 'uploader'])
+      for (const path of ['ledger', 'ledger/export'])
+        expect((await call(path, 'GET', undefined, who)).status).toBeGreaterThanOrEqual(401);
+    const r = await call('ledger', 'GET', undefined, 'admin');
+    expect(r.status).toBe(200);
+    expect(r.data.verification).toMatchObject({ enabled: true, ok: true });
+    expect(r.data.verification.count).toBeGreaterThan(0);
+    expect(r.data.events[0].kind).toBe('delete-all');
+    const jar = jars.admin;
+    const res = await handleAPI({
+      request: new Request('http://localhost/api/ledger/export'),
+      url: new URL('http://localhost/api/ledger/export'),
+      params: { path: 'ledger/export' },
+      cookies: { get: (k: string) => jar.get(k), set() {}, delete() {} },
+      getClientAddress: () => 'admin',
+    } as any);
+    expect(res.headers.get('content-type')).toContain('ndjson');
+    const lines = (await res.text()).trim().split('\n').map((l) => JSON.parse(l));
+    expect(lines).toHaveLength(r.data.verification.count);
+    expect(lines.at(-1).hash).toBe(r.data.verification.head);
+  });
 });
 describe('Non-destructive migration', () => {
   it('keeps existing notes intact and can run twice', async () => {

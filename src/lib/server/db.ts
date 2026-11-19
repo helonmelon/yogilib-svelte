@@ -1,4 +1,4 @@
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, readdir, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
@@ -13,11 +13,21 @@ export interface DB {
   transaction<T>(fn: (db: DB) => Promise<T>): Promise<T>;
 }
 export const isDemo = () => process.env.YOGILIB_DATABASE === 'pglite';
+/** Apply every additive migration in name order; each file is idempotent and runs in one transaction. */
 export async function migrate(db: DB) {
-  const sql = await readFile(resolve('migrations/001-platform.sql'), 'utf8');
-  await db.transaction(async (tx) => {
-    for (const s of sql.split(';')) if (s.trim()) await tx.query(s);
-  });
+  const dir = resolve('migrations');
+  const names = (await readdir(dir))
+    .filter((f) => /^\d{3}-.*\.sql$/.test(f))
+    .sort();
+  for (const name of names) {
+    const sql = (await readFile(resolve(dir, name), 'utf8')).replace(
+      /^--.*$/gm,
+      '',
+    );
+    await db.transaction(async (tx) => {
+      for (const s of sql.split(';')) if (s.trim()) await tx.query(s);
+    });
+  }
 }
 export function wrapPglite(pg: PGlite): DB {
   return {

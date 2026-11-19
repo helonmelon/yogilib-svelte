@@ -14,6 +14,7 @@ Updated 2026-11-13. A one-page guide to where things live, how a request flows, 
 | `/login`             | `src/routes/login/`                        | Google placeholder (disabled) + link to contributor login |
 | `/contributor-login` | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode       |
 | `/static/docs/:name` | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                     |
+| `/api/ledger`        | `src/lib/server/api.ts`                    | Admins: ledger verification, recent events, NDJSON export |
 | `/api/*`             | `src/routes/api/[...path]/+server.ts`      | JSON API used by the website and the mobile app           |
 
 Shared shell: `src/routes/+layout.svelte` (header, language switch, nav, sync button, footer) and `+error.svelte`.
@@ -30,6 +31,7 @@ src/
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
+│  │  ├─ ledger.ts         hash-chained archive history: record, verify, replay, export
 │  │  └─ storage.ts        upload validation, local disk or S3
 │  ├─ client/
 │  │  ├─ api.ts            fetch wrapper (uses VITE_API_URL on mobile)
@@ -44,15 +46,15 @@ src/
 
 Other top-level pieces:
 
-| Path                          | Purpose                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
-| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
-| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
-| `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
-| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
-| `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| Path                         | Purpose                                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `migrations/*.sql`           | Additive schema for external PostgreSQL (`001-platform`, `002-ledger`), applied in name order; run only via `npm run db:migrate` after review |
+| `scripts/`                   | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                                                                           |
+| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                                                                      |
+| `static/static/`             | Fonts, images, legacy CSS/JS                                                                                                                  |
+| `android/`, `ios/`           | Capacitor native projects (`capacitor.config.ts`)                                                                                             |
+| `Dockerfile`, `.env.example` | Server container and configuration template                                                                                                   |
+| `docs/`                      | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, `vision.md`, this map                                                     |
 
 ## 3. How a request flows
 
@@ -87,7 +89,7 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 19 tests              |
+| `npm test`                                    | Pass, 26 tests (2026-11-19) |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |
@@ -100,7 +102,7 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 3. **Tidy leftovers.** Unused strings in `src/lib/i18n.ts` (Downloads, Excerpts, Mission, Store, …) and unused HTML in `src/lib/content/` (about, mission, works, similar, excerpt).
 4. **Login.** Either implement Google sign-in (server-side OAuth in `lib/server/auth.ts` + `api.ts`) or hide the disabled button. Localise the new login page strings through `$t(...)` (they are currently hard-coded English).
 5. **Safety on "Delete all documents".** It is permanent and also deletes originals; consider a typed confirmation and making sure backups exist before using it on the live archive.
-6. **Migration rehearsal.** Copy the live Neon archive to a development branch, review `migrations/001-platform.sql`, run `npm run db:migrate`, and check stored HTML appearance, passwords, attachments and revisions (see `docs/migration.md`).
+6. **Migration rehearsal.** Copy the live Neon archive to a development branch, review `migrations/001-platform.sql` and `002-ledger.sql`, run `npm run db:migrate`, and check stored HTML appearance, passwords, attachments and revisions (see `docs/migration.md`).
 7. **Visual and device testing.** Review pages in a real browser (desktop and phone width), then compile and test Android/iOS on devices before any store work.
 8. **Release only with explicit approval.** Production deployment and store submission need separate authorisation.
 

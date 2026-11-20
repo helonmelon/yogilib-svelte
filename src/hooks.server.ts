@@ -1,5 +1,40 @@
 import type { Handle } from '@sveltejs/kit';
+import { createHash, timingSafeEqual } from 'node:crypto';
+
+// A hosted preview is private: one shared password (HTTP Basic auth) guards every page.
+// Health checks stay open so the host can tell the server is up.
+function previewGate(request: Request, pathname: string) {
+  const password = process.env.YOGILIB_PREVIEW_PASSWORD || '';
+  if (pathname === '/healthz') return null;
+  if (
+    process.env.YOGILIB_REQUIRE_PREVIEW_PASSWORD === '1' &&
+    password.length < 8
+  )
+    return new Response(
+      'Preview password is not configured (YOGILIB_PREVIEW_PASSWORD, 8+ characters).',
+      { status: 503 },
+    );
+  if (!password) return null;
+  const header = request.headers.get('authorization') || '';
+  let given = '';
+  if (header.startsWith('Basic ')) {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString();
+    given = decoded.slice(decoded.indexOf(':') + 1);
+  }
+  const digest = (v: string) => createHash('sha256').update(v).digest();
+  if (timingSafeEqual(digest(given), digest(password))) return null;
+  return new Response('Yogilib preview: sign in with the preview password.', {
+    status: 401,
+    headers: {
+      'WWW-Authenticate': 'Basic realm="Yogilib preview", charset="UTF-8"',
+      'Cache-Control': 'no-store',
+    },
+  });
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
+  const gated = previewGate(event.request, event.url.pathname);
+  if (gated) return gated;
   const origin = event.request.headers.get('origin');
   const trusted = new Set([
     event.url.origin,

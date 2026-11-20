@@ -53,3 +53,32 @@ within the free tiers.
 If Cloud Run's billing-account setup or upload limit is a problem, a small VPS
 (about €4 a month) running the same `Dockerfile` behind Caddy has a real disk
 and no request-size limit. It costs more and has to be patched by hand.
+
+## Free private preview (Render, added 2026-11-20)
+
+This is for watching progress, not for launch. `render.yaml` describes one
+free Render web service built from the existing `Dockerfile`:
+
+- **Sample data only.** `YOGILIB_DATABASE=pglite` uses the built-in demo
+  archive. Neon is never connected. Data and uploads reset whenever the free
+  instance restarts or redeploys.
+- **Private.** `YOGILIB_REQUIRE_PREVIEW_PASSWORD=1` means every page asks for
+  `YOGILIB_PREVIEW_PASSWORD` (at least 8 characters; any username works). If
+  it is missing, the server answers 503 instead of exposing the demo admin
+  buttons. `/healthz` stays open for Render's health check.
+- **Cost.** Free plan. It sleeps after a period of inactivity, so the first
+  visit after a while takes up to about a minute to wake.
+
+Setup (once, by the owner, about five minutes):
+
+1. Sign in at render.com with GitHub and allow access to
+   `helonmelon/yogilib-svelte`.
+2. Choose **New → Blueprint**, pick this repository and the branch to
+   follow (for example `claude/vibrant-cori-w3ecuc` to see the latest
+   work), and confirm the `yogilib-preview` service.
+3. When asked, enter a preview password, then deploy. The site appears at
+   `https://yogilib-preview-<suffix>.onrender.com`.
+4. Each push to that branch redeploys automatically.
+
+`render.yaml` was written without access to Render's current docs from the
+build environment. If Render rejects a key, adjust it in the Blueprint form.

@@ -1,0 +1,23 @@
+# Free, private progress preview on Render (Blueprint). Sample data only:
+# it uses the built-in PGlite database, never Neon, and resets whenever the
+# free instance restarts or redeploys. Every page asks for the preview password.
+services:
+  - type: web
+    name: yogilib-preview
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: YOGILIB_DATABASE
+        value: pglite
+      - key: YOGILIB_REQUIRE_PREVIEW_PASSWORD
+        value: '1'
+      - key: YOGILIB_PREVIEW_PASSWORD
+        sync: false
+      - key: PORT
+        value: '3000'
+      - key: PROTOCOL_HEADER
+        value: x-forwarded-proto
+      - key: HOST_HEADER
+        value: x-forwarded-host

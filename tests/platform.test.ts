@@ -413,3 +413,33 @@ describe('Chronicle (hash-chained archive history)', () => {
     await raw.close();
   });
 });
+describe('Hosted preview gate', () => {
+  const run = (headers: Record<string, string> = {}, path = '/') => {
+    const request = new Request('http://localhost' + path, { headers });
+    return handle({
+      event: { request, url: new URL(request.url) } as any,
+      resolve: async () => new Response('page'),
+    } as any);
+  };
+  const basic = (p: string) => ({
+    authorization: 'Basic ' + Buffer.from('reader:' + p).toString('base64'),
+  });
+  afterAll(() => {
+    delete process.env.YOGILIB_PREVIEW_PASSWORD;
+    delete process.env.YOGILIB_REQUIRE_PREVIEW_PASSWORD;
+  });
+  it('asks for the password, accepts it, and keeps health checks open', async () => {
+    process.env.YOGILIB_PREVIEW_PASSWORD = 'saffron-preview';
+    expect((await run()).status).toBe(401);
+    expect((await run()).headers.get('www-authenticate')).toContain('Basic');
+    expect((await run(basic('wrong'))).status).toBe(401);
+    expect((await run(basic('saffron-preview'))).status).toBe(200);
+    expect((await run({}, '/healthz')).status).toBe(200);
+  });
+  it('refuses to serve a required preview without a password', async () => {
+    delete process.env.YOGILIB_PREVIEW_PASSWORD;
+    process.env.YOGILIB_REQUIRE_PREVIEW_PASSWORD = '1';
+    expect((await run()).status).toBe(503);
+    expect((await run({}, '/healthz')).status).toBe(200);
+  });
+});

@@ -1,6 +1,7 @@
 import sanitize from 'sanitize-html';
 import { createHash } from 'node:crypto';
 import type { DB } from './db';
+import { record } from './chronicle';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
 export class Failure extends Error {
@@ -166,7 +167,13 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const saved = documentRow(await getDocument(tx, id));
+      await record(tx, 'document.revised', user.id, id, {
+        from: version(current),
+        to: saved.version,
+        title: saved.title,
+      });
+      return saved;
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,7 +186,14 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
-    return documentRow(r.rows[0]);
+    const created = documentRow(r.rows[0]);
+    await record(tx, 'document.created', user.id, created.id, {
+      to: created.version,
+      title: created.title,
+      category: created.category,
+      file: created.file_path,
+    });
+    return created;
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
@@ -194,6 +208,11 @@ export async function deleteDocument(db: DB, id: string, user: User) {
     ])
       await tx.query(`DELETE FROM ${table} WHERE document_id=$1`, [id]);
     await tx.query('DELETE FROM documents WHERE id=$1', [id]);
+    await record(tx, 'document.deleted', user.id, d.id, {
+      from: d.version,
+      title: d.title,
+      file: d.file_path,
+    });
     return d;
   });
 }
@@ -210,6 +229,9 @@ export async function deleteAllDocuments(db: DB, user: User) {
     ])
       await tx.query(`DELETE FROM ${table}`);
     await tx.query('DELETE FROM documents');
+    await record(tx, 'archive.cleared', user.id, null, {
+      count: documents.rows.length,
+    });
     return {
       count: documents.rows.length,
       files: documents.rows.map((row) => row.file_path).filter(Boolean),
@@ -221,6 +243,7 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  actor: string | null = null,
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +263,12 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const restored = documentRow(await getDocument(tx, id));
+    await record(tx, 'document.restored', actor, id, {
+      from: version(current),
+      to: restored.version,
+      revision,
+    });
+    return restored;
   });
 }

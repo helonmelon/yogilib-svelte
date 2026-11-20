@@ -17,6 +17,7 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes |
 | `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions    |
 | `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges       |
+| `src/lib/server/chronicle.ts`              | Append-only, hash-chained log of archive changes            |
 | `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                    |
 | `src/lib/components/DocumentReader.svelte` | Document tools, notes, history and progress                 |
 | `src/lib/components/DocumentEditor.svelte` | Lazy-loaded Quill, source editing and conversion            |
@@ -24,6 +25,7 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/converters/`                      | Preeti and ITRANS converters                                |
 | `src/offline/`                             | Small standalone browser cold-start offline reader          |
 | `migrations/001-platform.sql`              | Additive shared database schema                             |
+| `migrations/002-chronicle.sql`             | Additive chronicle (`archive_events`) table                 |
 | `android/`, `ios/`                         | Native Capacitor project scaffolds                          |
 
 ## Runtime and data flow
@@ -51,3 +53,7 @@ Server permissions apply to all mutations regardless of UI controls. Password ve
 Archive HTML is stored without translation and sanitized for rendering. Inline executable markup is stripped; this can change the presentation of stored HTML and must be reviewed on a real archive copy. Originals are limited to PDF/PNG/JPEG/WebP with a 50 MB limit and signature checks. File reads support ranges but currently buffer the full object in memory. High upload/download concurrency will require streaming and durable object-storage operations.
 
 Search combines PostgreSQL’s `simple` text configuration with substring matching. This supports Unicode search without claiming language-aware Nepali/Sanskrit stemming, OCR or semantic search. Login throttling is currently in process; multi-instance deployment needs a shared limiter. Document listing is paginated at 40 rows. No production performance or accessibility audit has been completed.
+
+## Chronicle
+
+Every create, revise, restore, delete and clear-all appends an `archive_events` row in the same transaction. Each row's `hash` is SHA-256 over canonical JSON of `[prev_hash, at, actor, kind, document_id, payload]`; the first row chains from 64 zeros. An advisory transaction lock serializes appends and a unique `prev_hash` index rejects forks. Payloads carry version hashes and titles, not document bodies (revisions hold content). Admins read it at `GET /api/chronicle` and recompute it at `GET /api/chronicle/verify`. On external Postgres without migration 002 the archive works and changes are not chronicled. See `docs/vision.md` for the Urbit-inspired direction.

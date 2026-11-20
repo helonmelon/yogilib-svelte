@@ -12,6 +12,7 @@ import {
   deleteAllDocuments,
   restoreDocument,
 } from './archive';
+import { listEvents, verifyChronicle } from './chronicle';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
 import type { User } from '../types';
 async function input(request: Request) {
@@ -120,11 +121,29 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'chronicle' && method === 'GET') {
+      requireUser('admin');
+      if (path[1] === 'verify') return json(await verifyChronicle(db));
+      if (path.length > 1) throw new Failure(404, 'Not found');
+      const after = Number(url.searchParams.get('after') || 0);
+      const limit = Number(url.searchParams.get('limit') || 100);
+      const documentId = url.searchParams.get('document') || '';
+      if (
+        !Number.isSafeInteger(after) ||
+        after < 0 ||
+        !Number.isSafeInteger(limit) ||
+        (documentId && !/^\d+$/.test(documentId))
+      )
+        throw new Failure(400, 'Invalid chronicle query');
+      return json(await listEvents(db, { after, limit, documentId }));
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -263,7 +282,15 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(
+            db,
+            id,
+            path[3],
+            String(b.version),
+            requireUser('admin').id,
+          ),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

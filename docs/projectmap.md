@@ -15,6 +15,7 @@ Updated 2026-11-13. A one-page guide to where things live, how a request flows, 
 | `/contributor-login` | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode       |
 | `/static/docs/:name` | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                     |
 | `/api/*`             | `src/routes/api/[...path]/+server.ts`      | JSON API used by the website and the mobile app           |
+| `/api/chronicle`     | `src/lib/server/api.ts`, `chronicle.ts`    | Admins: event log; `/api/chronicle/verify` checks chain   |
 
 Shared shell: `src/routes/+layout.svelte` (header, language switch, nav, sync button, footer) and `+error.svelte`.
 
@@ -29,6 +30,7 @@ src/
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
+│  │  ├─ chronicle.ts      hash-chained log of every archive change
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
 │  │  └─ storage.ts        upload validation, local disk or S3
 │  ├─ client/
@@ -44,15 +46,15 @@ src/
 
 Other top-level pieces:
 
-| Path                          | Purpose                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
-| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
-| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
-| `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
-| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
-| `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| Path                         | Purpose                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `migrations/*.sql`           | Additive schema (001 platform, 002 chronicle); run only via `npm run db:migrate` after review |
+| `scripts/`                   | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                           |
+| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                      |
+| `static/static/`             | Fonts, images, legacy CSS/JS                                                                  |
+| `android/`, `ios/`           | Capacitor native projects (`capacitor.config.ts`)                                             |
+| `Dockerfile`, `.env.example` | Server container and configuration template                                                   |
+| `docs/`                      | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map                  |
 
 ## 3. How a request flows
 
@@ -87,7 +89,7 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 19 tests              |
+| `npm test`                                    | Pass, 21 tests (2026-11-20) |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |

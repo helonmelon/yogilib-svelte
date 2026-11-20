@@ -5,6 +5,6 @@ if (!isDemo() && process.env.YOGILIB_ALLOW_MIGRATIONS !== '1')
   );
 await migrate(await database());
 console.log(
-  'Additive platform migration completed. No archive reset performed.',
+  'Additive migrations completed. No archive reset performed.',
 );
 process.exit(0);

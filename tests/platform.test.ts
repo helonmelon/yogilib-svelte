@@ -324,9 +324,15 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
   });
@@ -347,6 +353,63 @@ describe('Non-destructive migration', () => {
     expect(r.rows).toHaveLength(1);
     expect(r.rows[0].quote).toBe('ॐ मूल पाठ');
     expect(r.rows[0].client_key).toBeNull();
+    await raw.close();
+  });
+});
+describe('Chronicle (hash-chained archive history)', () => {
+  it('records every change, survives clearing the archive, and detects tampering', async () => {
+    expect((await call('chronicle', 'GET', undefined, 'viewer')).status).toBe(
+      403,
+    );
+    expect(
+      (await call('chronicle/verify', 'GET', undefined, 'uploader')).status,
+    ).toBe(403);
+    const before = await call('chronicle?limit=500', 'GET', undefined, 'admin');
+    expect(before.data.enabled).toBe(true);
+    const kinds = before.data.events.map((e: any) => e.kind);
+    for (const k of [
+      'document.created',
+      'document.revised',
+      'document.restored',
+      'document.deleted',
+      'archive.cleared',
+    ])
+      expect(kinds).toContain(k);
+    // Events outlive the documents they describe: the archive was cleared above.
+    const verified = await call('chronicle/verify', 'GET', undefined, 'admin');
+    expect(verified.data).toMatchObject({
+      enabled: true,
+      ok: true,
+      count: before.data.events.length,
+    });
+    const db = await database();
+    const target = before.data.events[1];
+    await db.query(
+      'UPDATE archive_events SET payload=\'{"title":"rewritten"}\' WHERE seq=$1',
+      [target.seq],
+    );
+    const broken = await call('chronicle/verify', 'GET', undefined, 'admin');
+    expect(broken.data).toMatchObject({ ok: false, broken_at: target.seq });
+    await db.query('UPDATE archive_events SET payload=$1 WHERE seq=$2', [
+      JSON.stringify(target.payload),
+      target.seq,
+    ]);
+    expect(
+      (await call('chronicle/verify', 'GET', undefined, 'admin')).data.ok,
+    ).toBe(true);
+    expect(
+      (await call('chronicle?after=abc', 'GET', undefined, 'admin')).status,
+    ).toBe(400);
+  });
+  it('keeps archive changes working on databases without the chronicle migration', async () => {
+    const { record, resetChronicleCache, verifyChronicle } =
+      await import('../src/lib/server/chronicle');
+    const raw = new PGlite();
+    const db = wrapPglite(raw);
+    resetChronicleCache();
+    expect(await record(db, 'archive.cleared', null, null)).toBeNull();
+    expect((await verifyChronicle(db)).enabled).toBe(false);
+    resetChronicleCache();
     await raw.close();
   });
 });

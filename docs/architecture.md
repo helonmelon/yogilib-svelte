@@ -23,7 +23,8 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/content/`                         | Preserved informational and sample archive content          |
 | `src/lib/converters/`                      | Preeti and ITRANS converters                                |
 | `src/offline/`                             | Small standalone browser cold-start offline reader          |
-| `migrations/001-platform.sql`              | Additive shared database schema                             |
+| `src/lib/server/ledger.ts`                 | Hash-chained archive ledger, verification and history       |
+| `migrations/`                              | Additive shared database schema, applied in name order      |
 | `android/`, `ios/`                         | Native Capacitor project scaffolds                          |
 
 ## Runtime and data flow

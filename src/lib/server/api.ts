@@ -12,6 +12,8 @@ import {
   deleteAllDocuments,
   restoreDocument,
 } from './archive';
+import { verifyLedger, documentHistory, ledgerEnabled } from './ledger';
+import { fields } from './archive';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
 import type { User } from '../types';
 async function input(request: Request) {
@@ -120,11 +122,84 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'ledger' && method === 'GET') {
+      requireUser('admin');
+      if (path[1] === 'verify') return json(await verifyLedger(db));
+      if (path[1]) throw new Failure(404, 'Not found');
+      const after = url.searchParams.get('after') || '0';
+      if (!/^\d{1,18}$/.test(after)) throw new Failure(400, 'Invalid cursor');
+      if (!(await ledgerEnabled(db)))
+        return json({ enabled: false, events: [] });
+      const r = await db.query(
+        'SELECT seq::text,kind,document_id::text,actor_id::text,payload,recorded_at,prev_hash,hash FROM archive_events WHERE seq>$1 ORDER BY seq LIMIT 100',
+        [after],
+      );
+      return json({ enabled: true, events: r.rows });
+    }
+    if (path[0] === 'export' && method === 'GET' && !path[1]) {
+      const u = requireUser('admin');
+      const docs = await db.query(
+        `SELECT id::text,${fields.join(',')},file_path,uploaded_by::text,created_at FROM documents ORDER BY id`,
+      );
+      const ledger = await verifyLedger(db);
+      return json(
+        {
+          format: 'yogilib-archive',
+          format_version: 1,
+          exported_at: new Date().toISOString(),
+          exported_by: u.id,
+          ledger: {
+            enabled: ledger.enabled,
+            ok: ledger.ok,
+            events: ledger.events,
+            head: ledger.head,
+          },
+          documents: docs.rows,
+        },
+        {
+          headers: {
+            'Content-Disposition':
+              'attachment; filename="yogilib-archive.json"',
+            'Cache-Control': 'no-store',
+          },
+        },
+      );
+    }
+    if (path[0] === 'me' && path[1] === 'export' && method === 'GET') {
+      const u = requireUser();
+      const notes = await db.query(
+        'SELECT document_id::text,quote,note,client_key,created_at FROM document_notes WHERE user_id=$1 ORDER BY id',
+        [u.id],
+      );
+      const progress = await db.query(
+        'SELECT document_id::text,position,version,updated_at FROM reading_progress WHERE user_id=$1 ORDER BY document_id',
+        [u.id],
+      );
+      return json(
+        {
+          format: 'yogilib-personal',
+          format_version: 1,
+          exported_at: new Date().toISOString(),
+          account: { email: u.email, role: u.role },
+          notes: notes.rows,
+          progress: progress.rows,
+        },
+        {
+          headers: {
+            'Content-Disposition':
+              'attachment; filename="yogilib-my-data.json"',
+            'Cache-Control': 'no-store',
+          },
+        },
+      );
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -249,8 +324,13 @@ export async function handleAPI(event: RequestEvent) {
         return json(updated.rows[0]);
       }
     }
-    if (path[2] === 'revisions') {
+    if (path[2] === 'ledger' && method === 'GET') {
       requireUser('admin');
+      if (!/^\d{1,18}$/.test(id)) throw new Failure(404, 'Document not found');
+      return json(await documentHistory(db, id));
+    }
+    if (path[2] === 'revisions') {
+      const admin = requireUser('admin');
       await getDocument(db, id);
       if (method === 'GET') {
         const r = await db.query(
@@ -263,7 +343,9 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(db, id, path[3], String(b.version), admin.id),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

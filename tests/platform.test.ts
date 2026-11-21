@@ -324,11 +324,121 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
+  });
+});
+describe('Archive ledger and data export', () => {
+  it('chains every archive change and keeps history after deletion', async () => {
+    const before = (await call('ledger/verify', 'GET', undefined, 'admin'))
+      .data;
+    expect(before.enabled).toBe(true);
+    expect(before.ok).toBe(true);
+    const created = await call(
+      'documents',
+      'POST',
+      {
+        title: 'खाता परीक्षण',
+        category: 'कागजात',
+        body_html: '<p>मूल पाठ</p>',
+      },
+      'uploader',
+    );
+    expect(created.status).toBe(201);
+    const id = created.data.id;
+    const edited = await call(
+      'documents/' + id,
+      'PUT',
+      { ...created.data, description: 'ledger edit' },
+      'admin',
+    );
+    expect(edited.status).toBe(200);
+    expect(
+      (await call('documents/' + id, 'DELETE', undefined, 'uploader')).status,
+    ).toBe(200);
+    const history = await call(
+      'documents/' + id + '/ledger',
+      'GET',
+      undefined,
+      'admin',
+    );
+    expect(history.data.map((e: any) => e.kind)).toEqual([
+      'document.delete',
+      'document.update',
+      'document.create',
+    ]);
+    expect(history.data[1].version).toBe(edited.data.version);
+    const after = (await call('ledger/verify', 'GET', undefined, 'admin')).data;
+    expect(after.ok).toBe(true);
+    expect(after.events).toBe(before.events + 3);
+    const page = await call('ledger?after=0', 'GET', undefined, 'admin');
+    const create = page.data.events.find(
+      (e: any) => e.document_id === id && e.kind === 'document.create',
+    );
+    expect(create.payload.body_html).toBe('<p>मूल पाठ</p>');
+  });
+  it('detects tampering with recorded history', async () => {
+    const db = await database();
+    const { rows } = await db.query(
+      'SELECT seq,payload FROM archive_events ORDER BY seq LIMIT 1',
+    );
+    const original = rows[0].payload;
+    await db.query('UPDATE archive_events SET payload=$1 WHERE seq=$2', [
+      JSON.stringify({ ...original, title: 'altered' }),
+      rows[0].seq,
+    ]);
+    const r = (await call('ledger/verify', 'GET', undefined, 'admin')).data;
+    expect(r.ok).toBe(false);
+    expect(r.broken_at).toBe(String(rows[0].seq));
+    await db.query('UPDATE archive_events SET payload=$1 WHERE seq=$2', [
+      JSON.stringify(original),
+      rows[0].seq,
+    ]);
+    expect(
+      (await call('ledger/verify', 'GET', undefined, 'admin')).data.ok,
+    ).toBe(true);
+  });
+  it('keeps the ledger and full export admin-only', async () => {
+    for (const who of ['public', 'viewer', 'uploader']) {
+      expect(
+        (await call('ledger/verify', 'GET', undefined, who)).status,
+      ).toBeGreaterThanOrEqual(401);
+      expect(
+        (await call('ledger', 'GET', undefined, who)).status,
+      ).toBeGreaterThanOrEqual(401);
+      expect(
+        (await call('export', 'GET', undefined, who)).status,
+      ).toBeGreaterThanOrEqual(401);
+      expect(
+        (await call('documents/1/ledger', 'GET', undefined, who)).status,
+      ).toBeGreaterThanOrEqual(401);
+    }
+    expect(
+      (await call('ledger?after=x', 'GET', undefined, 'admin')).status,
+    ).toBe(400);
+    const exp = await call('export', 'GET', undefined, 'admin');
+    expect(exp.status).toBe(200);
+    expect(exp.data.format).toBe('yogilib-archive');
+    expect(exp.data.ledger.ok).toBe(true);
+    expect(JSON.stringify(exp.data)).not.toContain('password');
+  });
+  it('lets every signed-in reader take their own notes and progress', async () => {
+    expect((await call('me/export')).status).toBe(401);
+    const mine = await call('me/export', 'GET', undefined, 'viewer');
+    expect(mine.status).toBe(200);
+    expect(mine.data.format).toBe('yogilib-personal');
+    expect(mine.data.account.role).toBe('viewer');
+    expect(Array.isArray(mine.data.notes)).toBe(true);
+    expect(JSON.stringify(mine.data)).not.toContain('password');
   });
 });
 describe('Non-destructive migration', () => {
@@ -347,6 +457,23 @@ describe('Non-destructive migration', () => {
     expect(r.rows).toHaveLength(1);
     expect(r.rows[0].quote).toBe('ॐ मूल पाठ');
     expect(r.rows[0].client_key).toBeNull();
+    await raw.close();
+  });
+  it('keeps saving on a database that has not applied the ledger migration', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const { saveDocument } = await import('../src/lib/server/archive');
+    const raw = new PGlite();
+    const db = wrapPglite(raw);
+    const sql = await readFile('migrations/001-platform.sql', 'utf8');
+    for (const s of sql.split(';')) if (s.trim()) await db.query(s);
+    const saved = await saveDocument(
+      db,
+      { title: 'पुरानो डाटाबेस', category: 'कागजात', body_html: '<p>ॐ</p>' },
+      { id: '1', email: 'a@example.invalid', role: 'admin' },
+    );
+    expect(saved.title).toBe('पुरानो डाटाबेस');
+    const t = await db.query("SELECT to_regclass('archive_events') AS t");
+    expect(t.rows[0].t).toBeNull();
     await raw.close();
   });
 });

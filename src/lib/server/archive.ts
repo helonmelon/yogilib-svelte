@@ -1,6 +1,7 @@
 import sanitize from 'sanitize-html';
 import { createHash } from 'node:crypto';
 import type { DB } from './db';
+import { ledgerEnabled, record, documentState } from './ledger';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
 export class Failure extends Error {
@@ -153,6 +154,7 @@ export async function saveDocument(
   if (id ? user.role !== 'admin' : !['admin', 'uploader'].includes(user.role))
     throw new Failure(403, 'Forbidden');
   const d = validateDocument(input);
+  const ledger = await ledgerEnabled(db);
   return db.transaction(async (tx) => {
     if (id) {
       const current = await getDocument(tx, id, true);
@@ -166,7 +168,16 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const updated = await getDocument(tx, id);
+      await record(
+        tx,
+        ledger,
+        'document.update',
+        id,
+        user.id,
+        documentState(updated, fields, version(updated)),
+      );
+      return documentRow(updated);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,10 +190,20 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
-    return documentRow(r.rows[0]);
+    const created = r.rows[0];
+    await record(
+      tx,
+      ledger,
+      'document.create',
+      String(created.id),
+      user.id,
+      documentState(created, fields, version(created)),
+    );
+    return documentRow(created);
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
+  const ledger = await ledgerEnabled(db);
   return db.transaction(async (tx) => {
     const d = documentRow(await getDocument(tx, id, true));
     if (!canDelete(user, d))
@@ -194,14 +215,20 @@ export async function deleteDocument(db: DB, id: string, user: User) {
     ])
       await tx.query(`DELETE FROM ${table} WHERE document_id=$1`, [id]);
     await tx.query('DELETE FROM documents WHERE id=$1', [id]);
+    await record(tx, ledger, 'document.delete', id, user.id, {
+      version: d.version,
+      title: d.title,
+      file_path: d.file_path,
+    });
     return d;
   });
 }
 export async function deleteAllDocuments(db: DB, user: User) {
   if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
+  const ledger = await ledgerEnabled(db);
   return db.transaction(async (tx) => {
-    const documents = await tx.query<{ file_path: string }>(
-      'SELECT file_path FROM documents',
+    const documents = await tx.query<{ id: string; file_path: string }>(
+      'SELECT id::text,file_path FROM documents ORDER BY id',
     );
     for (const table of [
       'document_notes',
@@ -210,6 +237,10 @@ export async function deleteAllDocuments(db: DB, user: User) {
     ])
       await tx.query(`DELETE FROM ${table}`);
     await tx.query('DELETE FROM documents');
+    await record(tx, ledger, 'archive.delete-all', null, user.id, {
+      count: documents.rows.length,
+      ids: documents.rows.map((row) => row.id),
+    });
     return {
       count: documents.rows.length,
       files: documents.rows.map((row) => row.file_path).filter(Boolean),
@@ -221,7 +252,9 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  actorId: string | null = null,
 ) {
+  const ledger = await ledgerEnabled(db);
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
     if (version(current) !== expected)
@@ -240,6 +273,11 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const restored = await getDocument(tx, id);
+    await record(tx, ledger, 'document.restore', id, actorId, {
+      ...documentState(restored, fields, version(restored)),
+      revision,
+    });
+    return documentRow(restored);
   });
 }

@@ -801,6 +801,109 @@ footer nav {
 footer a {
   text-decoration: none;
 }
+/* Welcome panel for first-time visitors */
+.welcome {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent);
+  border-radius: 6px;
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 2rem;
+}
+.welcome-head h2 {
+  margin: 0.2rem 0 0.3rem;
+  font-size: 1.45rem;
+}
+.welcome-head p {
+  color: var(--muted);
+  margin: 0;
+}
+.welcome-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 1.2rem 0;
+}
+.welcome-steps li {
+  counter-increment: step;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.welcome-steps strong {
+  color: var(--brown);
+  font-family: var(--serif);
+  font-size: 1rem;
+}
+.welcome-steps strong::before {
+  content: counter(step) '. ';
+  color: var(--accent);
+}
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+}
+.quiet-link {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+/* Recent changes journal */
+.journal-intro {
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 46rem;
+}
+.journal-ok {
+  color: #3d6b33;
+  font-size: 0.85rem;
+}
+.journal {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0;
+}
+.journal li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1rem;
+  border-top: 1px solid var(--line);
+  padding: 0.85rem 0;
+  font-size: 0.9rem;
+}
+.journal-seq {
+  font-variant-numeric: tabular-nums;
+  color: #a68052;
+  min-width: 3.5rem;
+}
+.journal-action {
+  min-width: 9rem;
+  color: var(--brown);
+  font-weight: 600;
+}
+.journal-delete .journal-action {
+  color: var(--accent);
+}
+.journal-title {
+  flex: 1 1 14rem;
+  font-family: var(--serif);
+}
+.journal-title small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.journal time {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
 @media (max-width: 1050px) {
   .reader-grid {
     grid-template-columns: 150px minmax(0, 1fr);
@@ -837,6 +940,12 @@ footer a {
   }
 }
 @media (max-width: 700px) {
+  .welcome-steps {
+    grid-template-columns: 1fr;
+  }
+  .journal-action {
+    min-width: 0;
+  }
   .masthead {
     padding: 1rem;
   }

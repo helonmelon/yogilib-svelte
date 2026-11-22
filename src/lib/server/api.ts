@@ -13,6 +13,7 @@ import {
   restoreDocument,
 } from './archive';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
+import { recentChanges, verifyJournal, recoverDocument } from './journal';
 import type { User } from '../types';
 async function input(request: Request) {
   const reader = request.body?.getReader();
@@ -120,11 +121,28 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'journal') {
+      if (!path[1] && method === 'GET')
+        return json(
+          await recentChanges(db, url.searchParams.get('before') ?? undefined),
+        );
+      if (path[1] === 'verify' && method === 'GET') {
+        requireUser('admin');
+        return json(await verifyJournal(db));
+      }
+      if (/^\d+$/.test(path[1]) && path[2] === 'recover' && method === 'POST')
+        return json(await recoverDocument(db, path[1], requireUser('admin')), {
+          status: 201,
+        });
+      throw new Failure(404, 'Not found');
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -263,7 +281,15 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(
+            db,
+            id,
+            path[3],
+            String(b.version),
+            requireUser('admin'),
+          ),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

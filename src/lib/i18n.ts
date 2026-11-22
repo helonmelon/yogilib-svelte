@@ -90,6 +90,37 @@ const added: Record<string, string> = {
   'Revision history': 'संशोधन इतिहास',
   'Restore this version': 'यो संस्करण पुनःस्थापना गर्नुहोस्',
   'No previous versions yet.': 'अघिल्लो संस्करण छैन।',
+  'Recent changes': 'भर्खरका परिवर्तनहरू',
+  'Verify journal': 'अभिलेख-पुस्तिका जाँच्नुहोस्',
+  'Every change to the archive is written to a permanent, tamper-evident journal. Deleted works keep their last text so they can be recovered.':
+    'अभिलेखालयको हरेक परिवर्तन स्थायी र छेडछाड पत्ता लाग्ने अभिलेख-पुस्तिकामा लेखिन्छ। हटाइएका कृतिहरूको अन्तिम पाठ सुरक्षित रहन्छ, त्यसैले तिनलाई फिर्ता ल्याउन सकिन्छ।',
+  'Journal intact': 'अभिलेख-पुस्तिका सुरक्षित छ',
+  'Journal broken at entry': 'अभिलेख-पुस्तिकामा यो प्रविष्टिमा गडबडी',
+  'The journal is not enabled on this archive yet.':
+    'यस अभिलेखालयमा अभिलेख-पुस्तिका अझै सक्रिय छैन।',
+  Added: 'थपियो',
+  Edited: 'सम्पादन गरियो',
+  'Restored an earlier version': 'अघिल्लो संस्करण पुनःस्थापना गरियो',
+  Deleted: 'हटाइयो',
+  Recovered: 'फिर्ता ल्याइयो',
+  Recover: 'फिर्ता ल्याउनुहोस्',
+  'No changes recorded yet.': 'अहिलेसम्म कुनै परिवर्तन अभिलेखित छैन।',
+  'Older changes': 'पुराना परिवर्तनहरू',
+  'Journal entry not found': 'अभिलेख-प्रविष्टि भेटिएन',
+  'This document already exists.': 'यो कागजात पहिले नै छ।',
+  Welcome: 'स्वागत छ',
+  'A library kept for the next generation': 'आउने पुस्ताका लागि जोगाइएको पुस्तकालय',
+  "Yogi Naraharinath's works and Nepal's historical record, preserved as they were written.":
+    'योगी नरहरिनाथका कृति र नेपालको ऐतिहासिक अभिलेख, जसरी लेखिएका थिए त्यसरी नै सुरक्षित।',
+  'Find titles and passages in English or Nepali.':
+    'अङ्ग्रेजी वा नेपालीमा शीर्षक र अंशहरू खोज्नुहोस्।',
+  Read: 'पढ्नुहोस्',
+  'Switch the interface language above. Original texts are never translated.':
+    'माथिबाट इन्टरफेसको भाषा बदल्नुहोस्। मूल पाठ कहिल्यै अनुवाद गरिँदैन।',
+  Keep: 'सुरक्षित राख्नुहोस्',
+  'Sign in to save private notes and your reading place on every device.':
+    'निजी टिप्पणी र पढेको स्थान हरेक उपकरणमा राख्न लगइन गर्नुहोस्।',
+  'Start exploring': 'हेर्न सुरु गर्नुहोस्',
 };
 export const t = derived(locale, (lang) => (key: string) => {
   const item = (catalog as Record<string, Record<string, string>>)[key];

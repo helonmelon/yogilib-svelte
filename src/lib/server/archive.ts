@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { DB } from './db';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
+import { record } from './journal';
 export class Failure extends Error {
   constructor(
     public status: number,
@@ -166,7 +167,9 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const updated = await getDocument(tx, id);
+      await record(tx, 'edit', updated, user);
+      return documentRow(updated);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,14 +182,17 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
+    await record(tx, 'create', r.rows[0], user);
     return documentRow(r.rows[0]);
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
   return db.transaction(async (tx) => {
-    const d = documentRow(await getDocument(tx, id, true));
+    const raw = await getDocument(tx, id, true);
+    const d = documentRow(raw);
     if (!canDelete(user, d))
       throw new Failure(403, 'You can only delete documents you uploaded.');
+    await record(tx, 'delete', raw, user, { snapshot: true });
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -200,9 +206,9 @@ export async function deleteDocument(db: DB, id: string, user: User) {
 export async function deleteAllDocuments(db: DB, user: User) {
   if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
   return db.transaction(async (tx) => {
-    const documents = await tx.query<{ file_path: string }>(
-      'SELECT file_path FROM documents',
-    );
+    const documents = await tx.query('SELECT * FROM documents ORDER BY id');
+    for (const row of documents.rows)
+      await record(tx, 'delete', row, user, { snapshot: true, bulk: true });
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -212,7 +218,9 @@ export async function deleteAllDocuments(db: DB, user: User) {
     await tx.query('DELETE FROM documents');
     return {
       count: documents.rows.length,
-      files: documents.rows.map((row) => row.file_path).filter(Boolean),
+      files: documents.rows
+        .map((row) => String(row.file_path ?? ''))
+        .filter(Boolean),
     };
   });
 }
@@ -221,6 +229,7 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  user: User | null = null,
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +249,8 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const restored = await getDocument(tx, id);
+    await record(tx, 'restore', restored, user);
+    return documentRow(restored);
   });
 }

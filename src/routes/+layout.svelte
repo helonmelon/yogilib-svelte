@@ -121,6 +121,8 @@
 </header>
 <nav class="navigation" aria-label="Main">
   <a class:active={$page.url.pathname === '/'} href="/">{$t('Archive')}</a
+  ><a class:active={$page.url.pathname === '/changes'} href="/changes"
+    >{$t('Recent changes')}</a
   >{#if user?.role === 'admin' || user?.role === 'uploader'}<a href="/upload"
       >{$t('Upload')}</a
     >{/if}{#if user?.role === 'admin'}<a href="/dashboard">{$t('Dashboard')}</a

@@ -4,6 +4,7 @@
   import { api } from '$lib/client/api';
   import { categories } from '$lib/types';
   import ConfirmDialog from './ConfirmDialog.svelte';
+  import Welcome from './Welcome.svelte';
   let { data, admin = false } = $props();
   let deleting = $state<string | null>(null);
   let pendingDelete = $state<string | null>(null);
@@ -25,6 +26,7 @@
 </script>
 
 <section class="archive">
+  {#if !admin}<Welcome />{/if}
   <div class="section-heading">
     <div>
       <span class="eyebrow">YOGILIB / COLLECTION</span>

@@ -4,17 +4,18 @@ Updated 2026-11-13. A one-page guide to where things live, how a request flows, 
 
 ## 1. Pages (what a visitor sees)
 
-| URL                  | File                                       | Who can use it                                            |
-| -------------------- | ------------------------------------------ | --------------------------------------------------------- |
-| `/`                  | `src/routes/+page.svelte`, `+page.ts`      | Everyone: archive list, search, categories                |
-| `/document/:id`      | `src/routes/document/[id]/`                | Everyone reads; signed-in users get notes/progress        |
-| `/document/:id/edit` | `src/routes/document/[id]/edit/`           | Admins                                                    |
-| `/upload`            | `src/routes/upload/`                       | Uploaders and admins                                      |
-| `/dashboard`         | `src/routes/dashboard/`                    | Admins (includes "Delete all documents")                  |
-| `/login`             | `src/routes/login/`                        | Google placeholder (disabled) + link to contributor login |
-| `/contributor-login` | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode       |
-| `/static/docs/:name` | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                     |
-| `/api/*`             | `src/routes/api/[...path]/+server.ts`      | JSON API used by the website and the mobile app           |
+| URL                  | File                                       | Who can use it                                                  |
+| -------------------- | ------------------------------------------ | --------------------------------------------------------------- |
+| `/`                  | `src/routes/+page.svelte`, `+page.ts`      | Everyone: archive list, search, categories, first-visit welcome |
+| `/changes`           | `src/routes/changes/`                      | Everyone: public journal feed; admins verify and recover        |
+| `/document/:id`      | `src/routes/document/[id]/`                | Everyone reads; signed-in users get notes/progress              |
+| `/document/:id/edit` | `src/routes/document/[id]/edit/`           | Admins                                                          |
+| `/upload`            | `src/routes/upload/`                       | Uploaders and admins                                            |
+| `/dashboard`         | `src/routes/dashboard/`                    | Admins (includes "Delete all documents")                        |
+| `/login`             | `src/routes/login/`                        | Google placeholder (disabled) + link to contributor login       |
+| `/contributor-login` | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode             |
+| `/static/docs/:name` | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                           |
+| `/api/*`             | `src/routes/api/[...path]/+server.ts`      | JSON API used by the website and the mobile app                 |
 
 Shared shell: `src/routes/+layout.svelte` (header, language switch, nav, sync button, footer) and `+error.svelte`.
 
@@ -28,6 +29,7 @@ src/
 │  ├─ server/              runs only on the Node server
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
+│  │  ├─ journal.ts        append-only hash-chained change log, recovery
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
 │  │  └─ storage.ts        upload validation, local disk or S3
@@ -44,15 +46,15 @@ src/
 
 Other top-level pieces:
 
-| Path                          | Purpose                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
-| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
-| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
-| `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
-| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
-| `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| Path                         | Purpose                                                                                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `migrations/*.sql`           | Additive schema for external PostgreSQL, applied in name order; run only via `npm run db:migrate` after review. `002-journal.sql` adds the archive journal |
+| `scripts/`                   | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                                                                                        |
+| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                                                                                   |
+| `static/static/`             | Fonts, images, legacy CSS/JS                                                                                                                               |
+| `android/`, `ios/`           | Capacitor native projects (`capacitor.config.ts`)                                                                                                          |
+| `Dockerfile`, `.env.example` | Server container and configuration template                                                                                                                |
+| `docs/`                      | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map                                                                               |
 
 ## 3. How a request flows
 
@@ -82,12 +84,12 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Production server | `npm run build && npm start` | External PostgreSQL                              |
 | Mobile client     | `npm run mobile:sync`        | Talks to server via `VITE_API_URL`               |
 
-## 5. Current status (checked 2026-11-13, Node 22)
+## 5. Current status (checked 2026-11-22, Node 22)
 
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 19 tests              |
+| `npm test`                                    | Pass, 24 tests              |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |

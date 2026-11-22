@@ -15,6 +15,7 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/server/api.ts`                    | Request validation and permission boundaries                |
 | `src/lib/server/db.ts`                     | PostgreSQL/PGlite adapters and explicit migrations          |
 | `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes |
+| `src/lib/server/journal.ts`                | Append-only, hash-chained journal of archive changes        |
 | `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions    |
 | `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges       |
 | `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                    |
@@ -30,7 +31,7 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 
 The website runs on a Node server using SvelteKit’s Node adapter. Its server-side code accesses PostgreSQL and original storage. The mobile build uses SvelteKit’s static adapter with client-side routing; `VITE_API_URL` points it to the same JSON API. Database and S3 credentials stay on the server.
 
-PostgreSQL stores documents, users, private notes, revision snapshots, session hashes and reading positions. Document column names and IDs are preserved. An additive migration adds nullable note idempotency keys, session storage, reading progress and a search index. External-database startup never runs this migration implicitly.
+PostgreSQL stores documents, users, private notes, revision snapshots, session hashes and reading positions. Migration `002-journal.sql` adds `archive_journal`: every create, edit, restore, delete and recovery is appended in the same transaction as the change, each entry hashing the previous one. Deletions keep the document's final text (not its original file or private notes), so an admin can recover it under its original ID. Until an external database has run migration 002, changes are simply not journaled. See `docs/vision.md` for the design philosophy behind this. Document column names and IDs are preserved. An additive migration adds nullable note idempotency keys, session storage, reading progress and a search index. External-database startup never runs this migration implicitly.
 
 The default development environment uses the WASM PostgreSQL engine PGlite, not a mocked JSON database. It is single-process development storage, not a substitute for a production PostgreSQL service. It seeds only the development archive.
 

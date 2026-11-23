@@ -8,24 +8,25 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 
 ## Code map
 
-| Location                                   | Responsibility                                              |
-| ------------------------------------------ | ----------------------------------------------------------- |
-| `src/routes/`                              | SvelteKit pages, layouts and HTTP routes                    |
-| `src/routes/api/[...path]/+server.ts`      | Shared JSON API dispatch                                    |
-| `src/lib/server/api.ts`                    | Request validation and permission boundaries                |
-| `src/lib/server/db.ts`                     | PostgreSQL/PGlite adapters and explicit migrations          |
-| `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes |
-| `src/lib/server/journal.ts`                | Append-only, hash-chained journal of archive changes        |
-| `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions    |
-| `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges       |
-| `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                    |
-| `src/lib/components/DocumentReader.svelte` | Document tools, notes, history and progress                 |
-| `src/lib/components/DocumentEditor.svelte` | Lazy-loaded Quill, source editing and conversion            |
-| `src/lib/content/`                         | Preserved informational and sample archive content          |
-| `src/lib/converters/`                      | Preeti and ITRANS converters                                |
-| `src/offline/`                             | Small standalone browser cold-start offline reader          |
-| `migrations/001-platform.sql`              | Additive shared database schema                             |
-| `android/`, `ios/`                         | Native Capacitor project scaffolds                          |
+| Location                                   | Responsibility                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| `src/routes/`                              | SvelteKit pages, layouts and HTTP routes                           |
+| `src/routes/api/[...path]/+server.ts`      | Shared JSON API dispatch                                           |
+| `src/lib/server/api.ts`                    | Request validation and permission boundaries                       |
+| `src/lib/server/db.ts`                     | PostgreSQL/PGlite adapters and explicit migrations                 |
+| `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes        |
+| `src/lib/server/journal.ts`                | Append-only, hash-chained journal of archive changes               |
+| `src/lib/server/pier.ts`                   | Portable, verifiable export of the public archive (`npm run pier`) |
+| `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions           |
+| `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges              |
+| `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                           |
+| `src/lib/components/DocumentReader.svelte` | Document tools, notes, history and progress                        |
+| `src/lib/components/DocumentEditor.svelte` | Lazy-loaded Quill, source editing and conversion                   |
+| `src/lib/content/`                         | Preserved informational and sample archive content                 |
+| `src/lib/converters/`                      | Preeti and ITRANS converters                                       |
+| `src/offline/`                             | Small standalone browser cold-start offline reader                 |
+| `migrations/001-platform.sql`              | Additive shared database schema                                    |
+| `android/`, `ios/`                         | Native Capacitor project scaffolds                                 |
 
 ## Runtime and data flow
 

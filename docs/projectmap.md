@@ -50,7 +50,7 @@ Other top-level pieces:
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `migrations/*.sql`           | Additive schema for external PostgreSQL, applied in name order; run only via `npm run db:migrate` after review. `002-journal.sql` adds the archive journal |
 | `scripts/`                   | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                                                                                        |
-| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                                                                                   |
+| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue), `journal.test.ts`, `pier.test.ts`                                                |
 | `static/static/`             | Fonts, images, legacy CSS/JS                                                                                                                               |
 | `android/`, `ios/`           | Capacitor native projects (`capacitor.config.ts`)                                                                                                          |
 | `Dockerfile`, `.env.example` | Server container and configuration template                                                                                                                |
@@ -84,12 +84,14 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Production server | `npm run build && npm start` | External PostgreSQL                              |
 | Mobile client     | `npm run mobile:sync`        | Talks to server via `VITE_API_URL`               |
 
-## 5. Current status (checked 2026-11-22, Node 22)
+**Backups (piers).** `npm run pier -- export <empty-dir>` reads the archive (read-only transaction) and writes `manifest.json`, `documents.jsonl`, `revisions.jsonl`, `journal.jsonl` and `originals/<sha256>.<ext>`. Passwords, sessions, private notes and reading positions are never exported. `npm run pier -- verify <dir>` re-checks every hash and the journal chain with no database. Against Neon it uses `DATABASE_URL` from `.env.local` and only reads.
+
+## 5. Current status (checked 2026-11-23, Node 22)
 
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 24 tests              |
+| `npm test`                                    | Pass, 26 tests              |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |
@@ -101,7 +103,7 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 2. **Decide on downloads.** The download button is gone but `download()` in `lib/client/offline.ts` and the `src/offline/` reader remain. Either restore a download button in `DocumentReader.svelte` or remove the dead code (and the cold-start offline shell, service worker and related tests).
 3. **Tidy leftovers.** Unused strings in `src/lib/i18n.ts` (Downloads, Excerpts, Mission, Store, …) and unused HTML in `src/lib/content/` (about, mission, works, similar, excerpt).
 4. **Login.** Either implement Google sign-in (server-side OAuth in `lib/server/auth.ts` + `api.ts`) or hide the disabled button. Localise the new login page strings through `$t(...)` (they are currently hard-coded English).
-5. **Safety on "Delete all documents".** It is permanent and also deletes originals; consider a typed confirmation and making sure backups exist before using it on the live archive.
+5. **Safety on "Delete all documents".** It is permanent and also deletes originals; consider a typed confirmation, and take a pier export (`npm run pier -- export`) before using it on the live archive.
 6. **Migration rehearsal.** Copy the live Neon archive to a development branch, review `migrations/001-platform.sql`, run `npm run db:migrate`, and check stored HTML appearance, passwords, attachments and revisions (see `docs/migration.md`).
 7. **Visual and device testing.** Review pages in a real browser (desktop and phone width), then compile and test Android/iOS on devices before any store work.
 8. **Release only with explicit approval.** Production deployment and store submission need separate authorisation.

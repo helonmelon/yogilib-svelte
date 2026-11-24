@@ -13,6 +13,8 @@ import {
   restoreDocument,
 } from './archive';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
+import { listEvents, verifyLedger } from './ledger';
+import { exportArchive } from './backup';
 import type { User } from '../types';
 async function input(request: Request) {
   const reader = request.body?.getReader();
@@ -120,11 +122,45 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'ledger' && method === 'GET') {
+      requireUser('admin');
+      if (path[1] === 'verify') return json(await verifyLedger(db));
+      const before = Number(url.searchParams.get('before') || 0);
+      const limit = Number(url.searchParams.get('limit') || 50);
+      if (
+        !Number.isSafeInteger(before) ||
+        before < 0 ||
+        !Number.isSafeInteger(limit)
+      )
+        throw new Failure(400, 'Invalid page');
+      return json(
+        await listEvents(db, {
+          documentId: /^\d+$/.test(url.searchParams.get('document') || '')
+            ? url.searchParams.get('document')!
+            : undefined,
+          before,
+          limit,
+        }),
+      );
+    }
+    if (path[0] === 'export' && method === 'GET') {
+      requireUser('admin');
+      const backup = await exportArchive(db);
+      return new Response(JSON.stringify(backup), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="yogilib-backup-${backup.exported_at.slice(0, 10)}.json"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -263,7 +299,15 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(
+            db,
+            id,
+            path[3],
+            String(b.version),
+            requireUser('admin'),
+          ),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

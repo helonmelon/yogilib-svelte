@@ -316,6 +316,27 @@ describe('Archive API and role boundaries', () => {
     expect(itransToUnicode('namaH shivAya')).toContain('नमः');
     expect(itransToUnicode('OM')).toBe('ॐ');
   });
+  it('limits the ledger and archive backup to admins', async () => {
+    for (const who of ['public', 'viewer', 'uploader']) {
+      expect(
+        (await call('ledger', 'GET', undefined, who)).status,
+      ).toBeGreaterThanOrEqual(401);
+      expect(
+        (await call('export', 'GET', undefined, who)).status,
+      ).toBeGreaterThanOrEqual(401);
+    }
+    const ledger = await call('ledger?limit=5', 'GET', undefined, 'admin');
+    expect(ledger.status).toBe(200);
+    expect(ledger.data.available).toBe(true);
+    expect(ledger.data.events.length).toBeGreaterThan(0);
+    expect(
+      (await call('ledger/verify', 'GET', undefined, 'admin')).data.ok,
+    ).toBe(true);
+    const backup = await call('export', 'GET', undefined, 'admin');
+    expect(backup.status).toBe(200);
+    expect(backup.data.documents.length).toBeGreaterThan(0);
+    expect(JSON.stringify(backup.data)).not.toContain('password_hash');
+  });
   it('allows admins to delete every document but limits uploaders to their own', async () => {
     const created = await call(
       'documents',
@@ -324,9 +345,15 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
   });

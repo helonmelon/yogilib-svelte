@@ -1,6 +1,7 @@
 import sanitize from 'sanitize-html';
 import { createHash } from 'node:crypto';
 import type { DB } from './db';
+import { record } from './ledger';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
 export class Failure extends Error {
@@ -62,6 +63,13 @@ export function version(d: Record<string, any>) {
     .update(JSON.stringify(fields.map((k) => d[k] ?? '')))
     .digest('hex')
     .slice(0, 24);
+}
+/** The archival content of a row, as stored in ledger events. */
+export function snapshot(row: Record<string, any>) {
+  const out: Record<string, string> = {};
+  for (const k of [...fields, 'file_path', 'created_at'])
+    out[k] = String(row[k] ?? '');
+  return out;
 }
 export const fields = [
   'title',
@@ -166,7 +174,16 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const updated = await getDocument(tx, id);
+      await record(
+        tx,
+        'document.edited',
+        id,
+        user.id,
+        { after: snapshot(updated), from: version(current) },
+        db,
+      );
+      return documentRow(updated);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,14 +196,32 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
+    await record(
+      tx,
+      'document.created',
+      String(r.rows[0].id),
+      user.id,
+      { after: snapshot(r.rows[0]) },
+      db,
+    );
     return documentRow(r.rows[0]);
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
   return db.transaction(async (tx) => {
-    const d = documentRow(await getDocument(tx, id, true));
+    const raw = await getDocument(tx, id, true);
+    const d = documentRow(raw);
     if (!canDelete(user, d))
       throw new Failure(403, 'You can only delete documents you uploaded.');
+    // The full content is kept in the ledger so a deletion can still be recovered.
+    await record(
+      tx,
+      'document.deleted',
+      id,
+      user.id,
+      { before: snapshot(raw) },
+      db,
+    );
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -200,8 +235,25 @@ export async function deleteDocument(db: DB, id: string, user: User) {
 export async function deleteAllDocuments(db: DB, user: User) {
   if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
   return db.transaction(async (tx) => {
-    const documents = await tx.query<{ file_path: string }>(
-      'SELECT file_path FROM documents',
+    const documents = await tx.query<Record<string, any>>(
+      'SELECT * FROM documents ORDER BY id',
+    );
+    for (const row of documents.rows)
+      await record(
+        tx,
+        'document.deleted',
+        String(row.id),
+        user.id,
+        { before: snapshot(row) },
+        db,
+      );
+    await record(
+      tx,
+      'archive.cleared',
+      null,
+      user.id,
+      { count: documents.rows.length },
+      db,
     );
     for (const table of [
       'document_notes',
@@ -221,6 +273,7 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  user?: { id: string },
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +293,15 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const updated = await getDocument(tx, id);
+    await record(
+      tx,
+      'document.restored',
+      id,
+      user?.id ?? null,
+      { after: snapshot(updated), from: version(current), revision },
+      db,
+    );
+    return documentRow(updated);
   });
 }

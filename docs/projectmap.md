@@ -1,6 +1,6 @@
 # Yogilib project map
 
-Updated 2026-11-13. A one-page guide to where things live, how a request flows, and what to do next.
+Updated 2026-11-24. A one-page guide to where things live, how a request flows, and what to do next.
 
 ## 1. Pages (what a visitor sees)
 
@@ -10,7 +10,7 @@ Updated 2026-11-13. A one-page guide to where things live, how a request flows, 
 | `/document/:id`      | `src/routes/document/[id]/`                | Everyone reads; signed-in users get notes/progress        |
 | `/document/:id/edit` | `src/routes/document/[id]/edit/`           | Admins                                                    |
 | `/upload`            | `src/routes/upload/`                       | Uploaders and admins                                      |
-| `/dashboard`         | `src/routes/dashboard/`                    | Admins (includes "Delete all documents")                  |
+| `/dashboard`         | `src/routes/dashboard/`                    | Admins: ledger status, backup download, delete all        |
 | `/login`             | `src/routes/login/`                        | Google placeholder (disabled) + link to contributor login |
 | `/contributor-login` | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode       |
 | `/static/docs/:name` | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                     |
@@ -29,12 +29,14 @@ src/
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
-│  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
+│  │  ├─ db.ts             PostgreSQL / PGlite connection, migrations, dev seeding
+│  │  ├─ ledger.ts         append-only hash-chained archive event log
+│  │  ├─ backup.ts         portable admin backup (documents, revisions, ledger)
 │  │  └─ storage.ts        upload validation, local disk or S3
 │  ├─ client/
 │  │  ├─ api.ts            fetch wrapper (uses VITE_API_URL on mobile)
 │  │  └─ offline.ts        notes/progress outbox, offline storage
-│  ├─ components/          ArchiveList, DocumentReader, DocumentEditor, ConfirmDialog
+│  ├─ components/          ArchiveList, DocumentReader, DocumentEditor, ConfirmDialog, Welcome
 │  ├─ converters/          Preeti → Unicode, ITRANS → Unicode
 │  ├─ i18n.ts + ui-translations.json   English/Nepali interface text
 │  ├─ content/             treaty.json (dev sample) + retired page content
@@ -44,15 +46,15 @@ src/
 
 Other top-level pieces:
 
-| Path                          | Purpose                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
-| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
-| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
-| `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
-| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
-| `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| Path                         | Purpose                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| `migrations/NNN-*.sql`       | Additive schema, applied in order; run only via `npm run db:migrate` after review                   |
+| `scripts/`                   | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                                 |
+| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `ledger.test.ts`, `offline.test.ts`                  |
+| `static/static/`             | Fonts, images, legacy CSS/JS                                                                        |
+| `android/`, `ios/`           | Capacitor native projects (`capacitor.config.ts`)                                                   |
+| `Dockerfile`, `.env.example` | Server container and configuration template                                                         |
+| `docs/`                      | `vision.md` (roadmap), `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map |
 
 ## 3. How a request flows
 
@@ -82,12 +84,12 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Production server | `npm run build && npm start` | External PostgreSQL                              |
 | Mobile client     | `npm run mobile:sync`        | Talks to server via `VITE_API_URL`               |
 
-## 5. Current status (checked 2026-11-13, Node 22)
+## 5. Current status (checked 2026-11-24, Node 22)
 
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 19 tests              |
+| `npm test`                                    | Pass, 27 tests              |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |
@@ -99,7 +101,8 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 2. **Decide on downloads.** The download button is gone but `download()` in `lib/client/offline.ts` and the `src/offline/` reader remain. Either restore a download button in `DocumentReader.svelte` or remove the dead code (and the cold-start offline shell, service worker and related tests).
 3. **Tidy leftovers.** Unused strings in `src/lib/i18n.ts` (Downloads, Excerpts, Mission, Store, …) and unused HTML in `src/lib/content/` (about, mission, works, similar, excerpt).
 4. **Login.** Either implement Google sign-in (server-side OAuth in `lib/server/auth.ts` + `api.ts`) or hide the disabled button. Localise the new login page strings through `$t(...)` (they are currently hard-coded English).
-5. **Safety on "Delete all documents".** It is permanent and also deletes originals; consider a typed confirmation and making sure backups exist before using it on the live archive.
+5. **Safety on "Delete all documents".** Once migration 002 is applied, deleted text is kept in the ledger and the dashboard offers a backup first, but originals are still removed from storage. Consider a typed confirmation too.
+   5a. **Ledger rollout.** Review `migrations/002-ledger.sql` and apply it to a Neon development branch first (see `docs/vision.md` §5). See `docs/vision.md` for the longer roadmap (AI, payments, bare-Linux appliance).
 6. **Migration rehearsal.** Copy the live Neon archive to a development branch, review `migrations/001-platform.sql`, run `npm run db:migrate`, and check stored HTML appearance, passwords, attachments and revisions (see `docs/migration.md`).
 7. **Visual and device testing.** Review pages in a real browser (desktop and phone width), then compile and test Android/iOS on devices before any store work.
 8. **Release only with explicit approval.** Production deployment and store submission need separate authorisation.

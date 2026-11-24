@@ -17,13 +17,15 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes |
 | `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions    |
 | `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges       |
+| `src/lib/server/ledger.ts`                 | Append-only, hash-chained archive event log                 |
+| `src/lib/server/backup.ts`                 | Portable admin backup of documents, revisions and ledger    |
 | `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                    |
 | `src/lib/components/DocumentReader.svelte` | Document tools, notes, history and progress                 |
 | `src/lib/components/DocumentEditor.svelte` | Lazy-loaded Quill, source editing and conversion            |
 | `src/lib/content/`                         | Preserved informational and sample archive content          |
 | `src/lib/converters/`                      | Preeti and ITRANS converters                                |
 | `src/offline/`                             | Small standalone browser cold-start offline reader          |
-| `migrations/001-platform.sql`              | Additive shared database schema                             |
+| `migrations/NNN-*.sql`                     | Additive shared database schema, applied in order           |
 | `android/`, `ios/`                         | Native Capacitor project scaffolds                          |
 
 ## Runtime and data flow
@@ -31,6 +33,8 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 The website runs on a Node server using SvelteKit’s Node adapter. Its server-side code accesses PostgreSQL and original storage. The mobile build uses SvelteKit’s static adapter with client-side routing; `VITE_API_URL` points it to the same JSON API. Database and S3 credentials stay on the server.
 
 PostgreSQL stores documents, users, private notes, revision snapshots, session hashes and reading positions. Document column names and IDs are preserved. An additive migration adds nullable note idempotency keys, session storage, reading progress and a search index. External-database startup never runs this migration implicitly.
+
+Migration `002-ledger` adds `archive_events`, an append-only log. Each document create, edit, restore and delete appends one event in the same transaction as the change; deletions keep the full deleted content. Each event stores the SHA-256 of the previous event plus its own canonical content, so `GET /api/ledger/verify` can detect any altered or removed event. An advisory lock serialises appends. Until the migration is applied to an external database, writes skip recording and behave as before. `GET /api/export` (admin) returns a versioned backup without passwords, sessions, notes or reading positions; originals are referenced, not included.
 
 The default development environment uses the WASM PostgreSQL engine PGlite, not a mocked JSON database. It is single-process development storage, not a substitute for a production PostgreSQL service. It seeds only the development archive.
 

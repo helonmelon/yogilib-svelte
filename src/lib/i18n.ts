@@ -2,6 +2,37 @@ import { writable, derived } from 'svelte/store';
 import catalog from './ui-translations.json';
 export const locale = writable<'en' | 'ne'>('en');
 const added: Record<string, string> = {
+  'Welcome to Yogilib': 'योगीलिबमा स्वागत छ',
+  'A living time capsule of Yogi Narharinath’s works':
+    'योगी नरहरिनाथका कृतिहरूको जीवित समय-सम्पुट',
+  'Read freely': 'निःशुल्क पढ्नुहोस्',
+  'Every work in the archive is open to read, in its original language and script.':
+    'अभिलेखालयका सबै कृतिहरू मूल भाषा र लिपिमै पढ्न खुला छन्।',
+  'Search in any script': 'जुनसुकै लिपिमा खोज्नुहोस्',
+  'Search titles and passages in Nepali, Sanskrit or English, or browse by category.':
+    'नेपाली, संस्कृत वा अंग्रेजीमा शीर्षक र अंश खोज्नुहोस्, वा वर्गअनुसार हेर्नुहोस्।',
+  'Sign in to keep notes': 'टिप्पणी राख्न लगइन गर्नुहोस्',
+  'Signed-in readers keep private notes and pick up where they left off on any device.':
+    'लगइन गरेका पाठकले निजी टिप्पणी राख्न र जुनसुकै उपकरणमा छाडेकै ठाउँबाट पढ्न सक्छन्।',
+  'Keep private notes': 'निजी टिप्पणी राख्नुहोस्',
+  'Select a passage while reading to keep a private note. Your place is remembered on every device.':
+    'पढ्दा अंश छानेर निजी टिप्पणी राख्नुहोस्। तपाईंले पढेको ठाउँ सबै उपकरणमा सम्झिइन्छ।',
+  'Add to the archive': 'अभिलेखालयमा थप्नुहोस्',
+  'Use Upload to add a work. Every change is kept in the archive’s permanent history.':
+    'कृति थप्न अपलोड प्रयोग गर्नुहोस्। हरेक परिवर्तन अभिलेखालयको स्थायी इतिहासमा रहन्छ।',
+  'Start reading': 'पढ्न सुरु गर्नुहोस्',
+  'Archive ledger': 'अभिलेख खाता',
+  'Download backup': 'ब्याकअप डाउनलोड गर्नुहोस्',
+  'The ledger starts recording after migration 002 has been applied.':
+    'माइग्रेसन ००२ लागू भएपछि खाताले अभिलेख राख्न सुरु गर्छ।',
+  'History verified': 'इतिहास प्रमाणित',
+  events: 'घटनाहरू',
+  'History check failed at event': 'इतिहास जाँच असफल, घटना',
+  Created: 'थपियो',
+  Edited: 'सम्पादित',
+  Restored: 'पुनर्स्थापित',
+  Deleted: 'हटाइयो',
+  'Archive cleared': 'अभिलेखालय खाली गरियो',
   Archive: 'अभिलेखालय',
   Downloads: 'डाउनलोडहरू',
   Search: 'खोज्नुहोस्',

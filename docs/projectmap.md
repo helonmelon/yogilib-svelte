@@ -29,6 +29,7 @@ src/
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
+│  │  ├─ capsule.ts        hash-chained, offline-verifiable archive export
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
 │  │  └─ storage.ts        upload validation, local disk or S3
 │  ├─ client/
@@ -87,13 +88,15 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 19 tests              |
+| `npm test`                                    | Pass, 21 tests              |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |
 | Native Android/iOS build, device test         | Not done                    |
 
 ## 6. Next steps, in order
+
+Longer-term direction (time capsule, AI, payments, bare-Linux appliance) lives in `docs/vision.md`. `/dashboard` now has **Download time capsule** (`GET /api/capsule`, admin only); verify a file offline with `npm run capsule:verify -- file.json`.
 
 1. **Bring the other docs in line.** `docs/architecture.md` still says the archive listing requires login and lists `src/lib/content/` as informational pages; `docs/verification.md` still lists informational pages, excerpts and downloaded reading as working features.
 2. **Decide on downloads.** The download button is gone but `download()` in `lib/client/offline.ts` and the `src/offline/` reader remain. Either restore a download button in `DocumentReader.svelte` or remove the dead code (and the cold-start offline shell, service worker and related tests).

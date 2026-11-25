@@ -324,9 +324,15 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
   });
@@ -348,5 +354,56 @@ describe('Non-destructive migration', () => {
     expect(r.rows[0].quote).toBe('ॐ मूल पाठ');
     expect(r.rows[0].client_key).toBeNull();
     await raw.close();
+  });
+});
+describe('Time capsule export', () => {
+  it('is admin-only, private by design and self-verifying', async () => {
+    const { verifyCapsule } = await import('../src/lib/server/capsule');
+    expect((await call('capsule')).status).toBe(401);
+    const made = await call(
+      'documents',
+      'POST',
+      {
+        title: 'Capsule',
+        title_np: 'सम्पुट',
+        category: 'कागजात',
+        body_html: '<p>अक्षर</p>',
+      },
+      'admin',
+    );
+    expect(made.status).toBe(201);
+    expect(
+      (
+        await call(
+          'documents/' + made.data.id,
+          'PUT',
+          { ...made.data, body_html: '<p>अक्षय</p>' },
+          'admin',
+        )
+      ).status,
+    ).toBe(200);
+    expect((await call('capsule', 'GET', undefined, 'viewer')).status).toBe(
+      403,
+    );
+    const { status, data } = await call('capsule', 'GET', undefined, 'admin');
+    expect(status).toBe(200);
+    expect(data.format).toBe('yogilib-capsule/1');
+    expect(data.counts.documents).toBeGreaterThan(0);
+    expect(data.counts.revisions).toBeGreaterThan(0);
+    expect(verifyCapsule(data)).toEqual({ ok: true, root: data.root });
+    const raw = JSON.stringify(data);
+    expect(raw).not.toMatch(/password_hash|token_hash|demo\.yogilib\.invalid/);
+    const tampered = structuredClone(data);
+    tampered.entries[0].data.title = 'changed';
+    expect(verifyCapsule(tampered)).toMatchObject({ ok: false });
+    const dropped = structuredClone(data);
+    dropped.entries.splice(0, 1);
+    expect(verifyCapsule(dropped).ok).toBe(false);
+  });
+  it('hashes independently of key order', async () => {
+    const { canonical } = await import('../src/lib/server/capsule');
+    expect(canonical({ b: 1, a: [{ d: 'देव', c: null }] })).toBe(
+      canonical({ a: [{ c: null, d: 'देव' }], b: 1 }),
+    );
   });
 });

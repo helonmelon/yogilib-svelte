@@ -90,6 +90,20 @@ const added: Record<string, string> = {
   'Revision history': 'संशोधन इतिहास',
   'Restore this version': 'यो संस्करण पुनःस्थापना गर्नुहोस्',
   'No previous versions yet.': 'अघिल्लो संस्करण छैन।',
+  'Download time capsule': 'समय-सम्पुट डाउनलोड गर्नुहोस्',
+  'Preparing…': 'तयार हुँदैछ…',
+  'A verifiable copy of every document and revision, without accounts or private notes.':
+    'खाता र निजी टिप्पणीबिना, प्रत्येक कागजात र संशोधनको प्रमाणित गर्न सकिने प्रति।',
+  'Welcome to Yogilib': 'योगिलिबमा स्वागत छ',
+  'A living archive of original texts, kept as they were written.':
+    'मूल ग्रन्थहरूको जीवित अभिलेखालय, जस्तो लेखिएको थियो त्यस्तै सुरक्षित।',
+  'Search titles and passages in Devanagari or Roman script.':
+    'देवनागरी वा रोमन लिपिमा शीर्षक र अंश खोज्नुहोस्।',
+  'Open any work to read; adjust font size and spacing in the reading tools.':
+    'पढ्न कुनै पनि कृति खोल्नुहोस्; पढ्ने सुविधामा अक्षर र दूरी मिलाउनुहोस्।',
+  'Sign in to keep private notes and resume where you left off.':
+    'निजी टिप्पणी राख्न र छाडेकै ठाउँबाट पढ्न लगइन गर्नुहोस्।',
+  'Start reading': 'पढ्न सुरु गर्नुहोस्',
 };
 export const t = derived(locale, (lang) => (key: string) => {
   const item = (catalog as Record<string, Record<string, string>>)[key];

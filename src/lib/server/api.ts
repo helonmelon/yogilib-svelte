@@ -12,7 +12,8 @@ import {
   deleteAllDocuments,
   restoreDocument,
 } from './archive';
-import { saveMedia, removeMedia, mediaResponse } from './storage';
+import { buildCapsule } from './capsule';
+import { saveMedia,removeMedia, mediaResponse } from './storage';
 import type { User } from '../types';
 async function input(request: Request) {
   const reader = request.body?.getReader();
@@ -119,6 +120,17 @@ export async function handleAPI(event: RequestEvent) {
       await revokeSession(db, cookies.get('yogilib-session'));
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
+    }
+    if (path[0] === 'capsule' && method === 'GET') {
+      requireUser('admin');
+      const capsule = await buildCapsule(db);
+      return new Response(JSON.stringify(capsule), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="yogilib-capsule-${capsule.created_at.slice(0, 10)}.json"`,
+          'Cache-Control': 'no-store',
+        },
+      });
     }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];

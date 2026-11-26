@@ -1,6 +1,6 @@
 # Yogilib project map
 
-Updated 2026-11-13. A one-page guide to where things live, how a request flows, and what to do next.
+Updated 2026-11-26. Long-range direction (Urbit-inspired chronicle, capsules, AI, payments, bare Linux) is in `docs/vision.md`. A one-page guide to where things live, how a request flows, and what to do next.
 
 ## 1. Pages (what a visitor sees)
 
@@ -28,6 +28,7 @@ src/
 │  ├─ server/              runs only on the Node server
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
+│  │  ├─ chronicle.ts      append-only hash-chained change log, replay, verify
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
 │  │  └─ storage.ts        upload validation, local disk or S3
@@ -44,15 +45,15 @@ src/
 
 Other top-level pieces:
 
-| Path                          | Purpose                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
-| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
-| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
-| `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
-| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
-| `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| Path                         | Purpose                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `migrations/*.sql`           | Additive schema (001 platform, 002 chronicle); run only via `npm run db:migrate` after review |
+| `scripts/`                   | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                           |
+| `tests/`                     | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                      |
+| `static/static/`             | Fonts, images, legacy CSS/JS                                                                  |
+| `android/`, `ios/`           | Capacitor native projects (`capacitor.config.ts`)                                             |
+| `Dockerfile`, `.env.example` | Server container and configuration template                                                   |
+| `docs/`                      | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map                  |
 
 ## 3. How a request flows
 
@@ -87,7 +88,7 @@ Signed-in users' notes and reading positions are queued in `lib/client/offline.t
 | Check                                         | Result                      |
 | --------------------------------------------- | --------------------------- |
 | `npm run check`                               | Pass, 0 errors / 0 warnings |
-| `npm test`                                    | Pass, 19 tests              |
+| `npm test`                                    | Pass, 26 tests (2026-11-26) |
 | `npm run build`                               | Pass                        |
 | `MOBILE_VALIDATE_ONLY=1 npm run build:mobile` | Pass                        |
 | `npm run test:smoke`                          | Pass                        |

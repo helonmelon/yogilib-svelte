@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import type { DB } from './db';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
+import { fields } from './archive-fields';
+import { record, documentState, chronicleEnabled } from './chronicle';
 export class Failure extends Error {
   constructor(
     public status: number,
@@ -63,21 +65,7 @@ export function version(d: Record<string, any>) {
     .digest('hex')
     .slice(0, 24);
 }
-export const fields = [
-  'title',
-  'title_np',
-  'category',
-  'description',
-  'body_html',
-  'body_text',
-  'lang',
-  'script',
-  'orig_author',
-  'orig_author_np',
-  'orig_year',
-  'orig_month',
-  'orig_day',
-];
+export { fields };
 export function documentRow(row: Record<string, any>): ArchiveDocument {
   const d: any = { ...row };
   for (const k of [...fields, 'file_path', 'uploaded_by'])
@@ -166,7 +154,12 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const updated = await getDocument(tx, id);
+      await record(tx, 'document.update', id, user.id, {
+        from: version(current),
+        state: documentState(updated),
+      });
+      return documentRow(updated);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,14 +172,22 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
+    await record(tx, 'document.create', String(r.rows[0].id), user.id, {
+      state: documentState(r.rows[0]),
+    });
     return documentRow(r.rows[0]);
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
   return db.transaction(async (tx) => {
-    const d = documentRow(await getDocument(tx, id, true));
+    const row = await getDocument(tx, id, true);
+    const d = documentRow(row);
     if (!canDelete(user, d))
       throw new Failure(403, 'You can only delete documents you uploaded.');
+    // The chronicle keeps the full text, so a deletion never erases history.
+    await record(tx, 'document.delete', id, user.id, {
+      state: documentState(row),
+    });
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -200,8 +201,30 @@ export async function deleteDocument(db: DB, id: string, user: User) {
 export async function deleteAllDocuments(db: DB, user: User) {
   if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
   return db.transaction(async (tx) => {
-    const documents = await tx.query<{ file_path: string }>(
-      'SELECT file_path FROM documents',
+    const documents = await tx.query<Record<string, any>>(
+      'SELECT * FROM documents ORDER BY id',
+    );
+    const enabled = await chronicleEnabled(tx);
+    for (const row of documents.rows)
+      await record(
+        tx,
+        'document.delete',
+        String(row.id),
+        user.id,
+        {
+          state: documentState(row),
+        },
+        enabled,
+      );
+    await record(
+      tx,
+      'archive.delete_all',
+      null,
+      user.id,
+      {
+        count: documents.rows.length,
+      },
+      enabled,
     );
     for (const table of [
       'document_notes',
@@ -221,6 +244,7 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  actorId: string | null = null,
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +264,11 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const restored = await getDocument(tx, id);
+    await record(tx, 'document.restore', id, actorId, {
+      revision,
+      state: documentState(restored),
+    });
+    return documentRow(restored);
   });
 }

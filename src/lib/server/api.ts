@@ -13,6 +13,12 @@ import {
   restoreDocument,
 } from './archive';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
+import {
+  chronicleEnabled,
+  recentChronicle,
+  sealArchive,
+  verifyChronicle,
+} from './chronicle';
 import type { User } from '../types';
 async function input(request: Request) {
   const reader = request.body?.getReader();
@@ -120,11 +126,32 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'chronicle') {
+      const admin = requireUser('admin');
+      if (!path[1] && method === 'GET') {
+        const before = Number(url.searchParams.get('before') || 0);
+        if (!Number.isSafeInteger(before) || before < 0)
+          throw new Failure(400, 'Invalid page');
+        if (!(await chronicleEnabled(db)))
+          return json({ enabled: false, entries: [] });
+        return json({
+          enabled: true,
+          entries: await recentChronicle(db, before || undefined),
+        });
+      }
+      if (path[1] === 'verify' && method === 'GET')
+        return json(await verifyChronicle(db));
+      if (path[1] === 'seal' && method === 'POST')
+        return json(await sealArchive(db, admin.id));
+      throw new Failure(405, 'Method not allowed');
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -250,7 +277,7 @@ export async function handleAPI(event: RequestEvent) {
       }
     }
     if (path[2] === 'revisions') {
-      requireUser('admin');
+      const admin = requireUser('admin');
       await getDocument(db, id);
       if (method === 'GET') {
         const r = await db.query(
@@ -263,7 +290,9 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(db, id, path[3], String(b.version), admin.id),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

@@ -90,6 +90,24 @@ const added: Record<string, string> = {
   'Revision history': 'संशोधन इतिहास',
   'Restore this version': 'यो संस्करण पुनःस्थापना गर्नुहोस्',
   'No previous versions yet.': 'अघिल्लो संस्करण छैन।',
+  'Archive chronicle': 'अभिलेख इतिवृत्त',
+  'Every change is written to an append-only log. Each entry is sealed with the hash of the one before it, and deleted text stays in the log.':
+    'हरेक परिवर्तन थप्न मात्र मिल्ने अभिलेखमा लेखिन्छ। हरेक प्रविष्टि अघिल्लोको ह्यासले मोहर लगाइन्छ, र मेटिएको पाठ पनि अभिलेखमै रहन्छ।',
+  'The chronicle migration has not been applied to this database.':
+    'यो डाटाबेसमा इतिवृत्त माइग्रेसन लागू भएको छैन।',
+  Verified: 'प्रमाणित',
+  entries: 'प्रविष्टिहरू',
+  'History does not verify from entry': 'यस प्रविष्टिदेखि इतिहास प्रमाणित भएन',
+  'Documents not matching the chronicle': 'इतिवृत्तसँग नमिल्ने कागजातहरू',
+  Head: 'शीर्ष',
+  'Verify again': 'फेरि प्रमाणित गर्नुहोस्',
+  'Record unrecorded documents': 'नलेखिएका कागजातहरू लेख्नुहोस्',
+  Recorded: 'लेखियो',
+  Added: 'थपियो',
+  Edited: 'सम्पादन गरियो',
+  Restored: 'पुनःस्थापित',
+  Deleted: 'मेटियो',
+  'Deleted all documents': 'सबै कागजात मेटियो',
 };
 export const t = derived(locale, (lang) => (key: string) => {
   const item = (catalog as Record<string, Record<string, string>>)[key];

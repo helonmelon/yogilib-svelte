@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/client/api';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import ChroniclePanel from '$lib/components/ChroniclePanel.svelte';
   let { data } = $props();
   let busy = $state(false);
   let error = $state('');
@@ -34,11 +35,12 @@
   </button>
 </div>
 <ArchiveList {data} admin />
+<ChroniclePanel />
 <ConfirmDialog
   open={confirmAll}
   title="Delete all documents?"
-  message="Every document, note, revision, and reading position will be permanently deleted."
-  busy={busy}
+  message="Every document, note, revision, reading position, and original file will be removed from the archive. The archive chronicle keeps a copy of each document's text and metadata."
+  {busy}
   onconfirm={confirmDeleteAll}
   oncancel={() => (confirmAll = false)}
 />

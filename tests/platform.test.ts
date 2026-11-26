@@ -324,11 +324,33 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
+    // Deletion is still recorded, with the text, in the verified chronicle.
+    expect(
+      (await call('chronicle/verify', 'GET', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect((await call('chronicle/verify')).status).toBe(401);
+    const verify = await call('chronicle/verify', 'GET', undefined, 'admin');
+    expect(verify.data).toMatchObject({ enabled: true, ok: true, drift: [] });
+    const recent = await call('chronicle', 'GET', undefined, 'admin');
+    expect(recent.data.entries[0].kind).toBe('archive.delete_all');
+    expect(recent.data.entries[0].actor).toBe('admin@demo.yogilib.invalid');
+    expect(
+      recent.data.entries.some((e: any) => e.title === 'Owner document'),
+    ).toBe(true);
+    expect((await call('chronicle/seal', 'POST', {}, 'admin')).data).toEqual({
+      sealed: 0,
+    });
   });
 });
 describe('Non-destructive migration', () => {

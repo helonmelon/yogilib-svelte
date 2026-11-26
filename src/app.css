@@ -738,6 +738,47 @@ main {
   width: auto;
   font-size: 0.8rem;
 }
+.chronicle {
+  margin: 1.5rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--cream);
+}
+.chronicle summary {
+  cursor: pointer;
+  font-family: var(--serif);
+  color: var(--brown);
+  font-weight: 600;
+}
+.chronicle-ok {
+  color: #2f6b3a;
+  font-weight: 600;
+}
+.chronicle-head code {
+  word-break: break-all;
+}
+.chronicle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.chronicle-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.chronicle-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: baseline;
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
 .muted {
   font-size: 0.8rem;
   color: var(--muted);

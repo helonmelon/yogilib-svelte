@@ -17,6 +17,7 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 | `src/lib/server/archive.ts`                | Search, sanitized rendering, revisions and document changes |
 | `src/lib/server/auth.ts`                   | Existing bcrypt passwords and revocable, hashed sessions    |
 | `src/lib/server/storage.ts`                | Validated originals, local/S3 storage and byte ranges       |
+| `src/lib/server/chronicle.ts`              | Append-only, hash-chained archive change log                |
 | `src/lib/client/offline.ts`                | Local private-note cache and sync outbox                    |
 | `src/lib/components/DocumentReader.svelte` | Document tools, notes, history and progress                 |
 | `src/lib/components/DocumentEditor.svelte` | Lazy-loaded Quill, source editing and conversion            |
@@ -29,6 +30,8 @@ Preserve the compact saffron, temple-brown and cream visual language. Translate 
 ## Runtime and data flow
 
 The website runs on a Node server using SvelteKit’s Node adapter. Its server-side code accesses PostgreSQL and original storage. The mobile build uses SvelteKit’s static adapter with client-side routing; `VITE_API_URL` points it to the same JSON API. Database and S3 credentials stay on the server.
+
+Every archive change is also appended to the archive chronicle (`migrations/002-chronicle.sql`) in the same transaction. Each entry hashes the previous entry, deletions keep the full document text, and replaying the chronicle must reproduce the `documents` table. Private notes and reading positions are not logged. See `docs/vision.md`.
 
 PostgreSQL stores documents, users, private notes, revision snapshots, session hashes and reading positions. Document column names and IDs are preserved. An additive migration adds nullable note idempotency keys, session storage, reading progress and a search index. External-database startup never runs this migration implicitly.
 

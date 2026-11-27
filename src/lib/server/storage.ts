@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, unlink, stat } from 'node:fs/promises';
 import { resolve, basename, extname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Failure } from './archive';
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from '../limits';
@@ -136,4 +137,22 @@ export async function mediaResponse(
     });
   }
   return new Response(bytes, { headers });
+}
+export async function mediaExists(path: string) {
+  if (!path.startsWith('/api/files/')) return false;
+  const key = path.slice(11);
+  if (key !== basename(key) || !/^[\w.-]+$/.test(key)) return false;
+  try {
+    if (process.env.S3_BUCKET)
+      await client().send(
+        new HeadObjectCommand({
+          Bucket: process.env.S3_BUCKET,
+          Key: 'originals/' + key,
+        }),
+      );
+    else await stat(resolve(root(), key));
+    return true;
+  } catch {
+    return false;
+  }
 }

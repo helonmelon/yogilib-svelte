@@ -4,17 +4,18 @@ Updated 2026-11-13. A one-page guide to where things live, how a request flows, 
 
 ## 1. Pages (what a visitor sees)
 
-| URL                  | File                                       | Who can use it                                            |
-| -------------------- | ------------------------------------------ | --------------------------------------------------------- |
-| `/`                  | `src/routes/+page.svelte`, `+page.ts`      | Everyone: archive list, search, categories                |
-| `/document/:id`      | `src/routes/document/[id]/`                | Everyone reads; signed-in users get notes/progress        |
-| `/document/:id/edit` | `src/routes/document/[id]/edit/`           | Admins                                                    |
-| `/upload`            | `src/routes/upload/`                       | Uploaders and admins                                      |
-| `/dashboard`         | `src/routes/dashboard/`                    | Admins (includes "Delete all documents")                  |
-| `/login`             | `src/routes/login/`                        | Google placeholder (disabled) + link to contributor login |
-| `/contributor-login` | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode       |
-| `/static/docs/:name` | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                     |
-| `/api/*`             | `src/routes/api/[...path]/+server.ts`      | JSON API used by the website and the mobile app           |
+| URL                            | File                                       | Who can use it                                            |
+| ------------------------------ | ------------------------------------------ | --------------------------------------------------------- |
+| `/`                            | `src/routes/+page.svelte`, `+page.ts`      | Everyone: archive list, search, categories                |
+| `/document/:id`                | `src/routes/document/[id]/`                | Everyone reads; signed-in users get notes/progress        |
+| `/document/:id/edit`           | `src/routes/document/[id]/edit/`           | Admins                                                    |
+| `/upload`                      | `src/routes/upload/`                       | Uploaders and admins                                      |
+| `/dashboard`                   | `src/routes/dashboard/`                    | Admins (includes "Delete all documents")                  |
+| `/login`                       | `src/routes/login/`                        | Google placeholder (disabled) + link to contributor login |
+| `/contributor-login`           | `src/routes/contributor-login/`            | Email/password sign-in; demo buttons in PGlite mode       |
+| `/static/docs/:name`           | `src/routes/static/docs/[name]/+server.ts` | Legacy original-file URLs (read only)                     |
+| `/api/*`                       | `src/routes/api/[...path]/+server.ts`      | JSON API used by the website and the mobile app           |
+| `/api/journal*`, `/api/export` | `src/lib/server/journal.ts`, `export.ts`   | Admins: archive journal, chain check, recovery, snapshot  |
 
 Shared shell: `src/routes/+layout.svelte` (header, language switch, nav, sync button, footer) and `+error.svelte`.
 
@@ -29,6 +30,8 @@ src/
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
+│  │  ├─ journal.ts        append-only hash-chained event log, recovery
+│  │  ├─ export.ts         portable archive snapshot
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
 │  │  └─ storage.ts        upload validation, local disk or S3
 │  ├─ client/
@@ -44,15 +47,16 @@ src/
 
 Other top-level pieces:
 
-| Path                          | Purpose                                                                                 |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
-| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
-| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
-| `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
-| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
-| `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| Path                          | Purpose                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review   |
+| `migrations/002-journal.sql`  | Additive `archive_events` journal table; same review rule                                 |
+| `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                       |
+| `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                  |
+| `static/static/`              | Fonts, images, legacy CSS/JS                                                              |
+| `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                         |
+| `Dockerfile`, `.env.example`  | Server container and configuration template                                               |
+| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, `vision.md`, this map |
 
 ## 3. How a request flows
 

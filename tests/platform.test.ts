@@ -324,11 +324,125 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
+  });
+});
+describe('Archive journal and portable export', () => {
+  it('journals every change, keeps it admin-only, and verifies the chain', async () => {
+    for (const who of ['public', 'viewer', 'uploader'])
+      expect([401, 403]).toContain(
+        (await call('journal', 'GET', undefined, who)).status,
+      );
+    const log = await call('journal', 'GET', undefined, 'admin');
+    expect(log.status).toBe(200);
+    expect(log.data.enabled).toBe(true);
+    const kinds = log.data.events.map((e: any) => e.kind);
+    for (const k of [
+      'document.created',
+      'document.updated',
+      'document.restored',
+      'document.deleted',
+    ])
+      expect(kinds).toContain(k);
+    const verified = await call('journal/verify', 'GET', undefined, 'admin');
+    expect(verified.data.ok).toBe(true);
+    expect(verified.data.count).toBe(log.data.events.length);
+    expect(verified.data.head).toBe(log.data.events[0].hash);
+  });
+  it('recovers a deleted document with its original text and revision history', async () => {
+    expect((await call('documents/1')).status).toBe(404);
+    expect(
+      (await call('journal/recover/1', 'POST', {}, 'uploader')).status,
+    ).toBe(403);
+    const recovered = await call('journal/recover/1', 'POST', {}, 'admin');
+    expect(recovered.status).toBe(201);
+    expect(recovered.data.id).toBe('1');
+    expect(recovered.data.body_html).toContain('सुगौली सन्धि');
+    expect((await call('documents/1')).status).toBe(200);
+    expect((await call('journal/recover/1', 'POST', {}, 'admin')).status).toBe(
+      409,
+    );
+    expect(
+      (await call('journal/recover/999999', 'POST', {}, 'admin')).status,
+    ).toBe(404);
+    const created = await call(
+      'documents',
+      'POST',
+      { title: 'With history', category: 'कागजात', body_html: '<p>पहिलो</p>' },
+      'admin',
+    );
+    const edited = await call(
+      'documents/' + created.data.id,
+      'PUT',
+      { ...created.data, body_html: '<p>दोस्रो</p>' },
+      'admin',
+    );
+    expect(edited.status).toBe(200);
+    expect(
+      (await call('documents/' + created.data.id, 'DELETE', undefined, 'admin'))
+        .status,
+    ).toBe(200);
+    const back = await call(
+      'journal/recover/' + created.data.id,
+      'POST',
+      {},
+      'admin',
+    );
+    expect(back.data.body_html).toContain('दोस्रो');
+    const history = await call(
+      `documents/${created.data.id}/revisions`,
+      'GET',
+      undefined,
+      'admin',
+    );
+    expect(history.data).toHaveLength(1);
+    expect(history.data[0].snapshot.body_html).toContain('पहिलो');
+    expect(
+      (await call('journal/verify', 'GET', undefined, 'admin')).data.ok,
+    ).toBe(true);
+  });
+  it('detects a rewritten journal entry', async () => {
+    const db = await database();
+    const { rows } = await db.query(
+      'SELECT id,payload FROM archive_events ORDER BY id LIMIT 1',
+    );
+    const original = rows[0].payload;
+    await db.query('UPDATE archive_events SET payload=$1 WHERE id=$2', [
+      JSON.stringify({ ...original, tampered: true }),
+      rows[0].id,
+    ]);
+    const broken = await call('journal/verify', 'GET', undefined, 'admin');
+    expect(broken.data.ok).toBe(false);
+    expect(broken.data.brokenAt).toBe(String(rows[0].id));
+    await db.query('UPDATE archive_events SET payload=$1 WHERE id=$2', [
+      JSON.stringify(original),
+      rows[0].id,
+    ]);
+    expect(
+      (await call('journal/verify', 'GET', undefined, 'admin')).data.ok,
+    ).toBe(true);
+  });
+  it('exports a portable snapshot without accounts or private notes', async () => {
+    expect((await call('export', 'GET', undefined, 'viewer')).status).toBe(403);
+    const r = await call('export', 'GET', undefined, 'admin');
+    expect(r.status).toBe(200);
+    expect(r.data.format).toBe('yogilib-archive');
+    expect(r.data.journal.ok).toBe(true);
+    expect(r.data.documents.some((d: any) => d.id === '1')).toBe(true);
+    expect(r.data.counts.documents).toBe(r.data.documents.length);
+    const text = JSON.stringify(r.data);
+    expect(text).not.toContain('password_hash');
+    expect(text).not.toContain('निजी टिप्पणी');
   });
 });
 describe('Non-destructive migration', () => {

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { DB } from './db';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
+import { record, deletedSnapshot } from './journal';
 export class Failure extends Error {
   constructor(
     public status: number,
@@ -166,7 +167,12 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const updated = await getDocument(tx, id);
+      await record(tx, 'document.updated', id, user.id, {
+        document: updated,
+        previous_version: version(current),
+      });
+      return documentRow(updated);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,14 +185,19 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
+    await record(tx, 'document.created', String(r.rows[0].id), user.id, {
+      document: r.rows[0],
+    });
     return documentRow(r.rows[0]);
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
   return db.transaction(async (tx) => {
-    const d = documentRow(await getDocument(tx, id, true));
+    const raw = await getDocument(tx, id, true);
+    const d = documentRow(raw);
     if (!canDelete(user, d))
       throw new Failure(403, 'You can only delete documents you uploaded.');
+    await tombstone(tx, raw, user);
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -201,8 +212,9 @@ export async function deleteAllDocuments(db: DB, user: User) {
   if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
   return db.transaction(async (tx) => {
     const documents = await tx.query<{ file_path: string }>(
-      'SELECT file_path FROM documents',
+      'SELECT * FROM documents ORDER BY id FOR UPDATE',
     );
+    for (const raw of documents.rows) await tombstone(tx, raw, user);
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -216,11 +228,68 @@ export async function deleteAllDocuments(db: DB, user: User) {
     };
   });
 }
+// Private notes and reading positions stay private and are not kept; the document
+// itself and its revision history go into the journal so the deletion can be undone.
+async function tombstone(tx: DB, raw: Record<string, any>, user: User) {
+  const revisions = await tx.query(
+    'SELECT id::text,created_at,snapshot FROM document_revisions WHERE document_id=$1 ORDER BY id',
+    [raw.id],
+  );
+  await record(tx, 'document.deleted', String(raw.id), user.id, {
+    document: raw,
+    revisions: revisions.rows,
+  });
+}
+// Re-creates a deleted document under its original id from the journal. Originals
+// removed from storage are not brought back; file_path is cleared if the file is gone.
+export async function recoverDocument(
+  db: DB,
+  id: string,
+  user: User,
+  fileExists: (path: string) => Promise<boolean>,
+) {
+  if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
+  if (!/^\d+$/.test(id)) throw new Failure(404, 'Document not found');
+  return db.transaction(async (tx) => {
+    const exists = await tx.query('SELECT id FROM documents WHERE id=$1', [id]);
+    if (exists.rows.length)
+      throw new Failure(409, 'This document already exists.');
+    const tomb = await deletedSnapshot(tx, id);
+    if (!tomb) throw new Failure(404, 'No deleted copy of this document.');
+    const snapshot = tomb.document;
+    const filePath =
+      snapshot.file_path && (await fileExists(snapshot.file_path))
+        ? snapshot.file_path
+        : '';
+    const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
+    const r = await tx.query(
+      `INSERT INTO documents(id,${keys.join(',')}) VALUES($1,${keys.map((_, i) => '$' + (i + 2)).join(',')}) RETURNING *`,
+      [
+        id,
+        ...fields.map((k) => snapshot[k] ?? ''),
+        snapshot.uploaded_by || null,
+        snapshot.created_at || new Date().toISOString(),
+        filePath,
+      ],
+    );
+    for (const rev of tomb.revisions ?? [])
+      await tx.query(
+        'INSERT INTO document_revisions(document_id,snapshot,created_at) VALUES($1,$2,$3)',
+        [id, JSON.stringify(rev.snapshot), rev.created_at],
+      );
+    await record(tx, 'document.restored', id, user.id, {
+      document: r.rows[0],
+      from: 'deletion',
+    });
+    return documentRow(r.rows[0]);
+  });
+}
 export async function restoreDocument(
   db: DB,
   id: string,
   revision: string,
   expected: string,
+  user?: User,
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +309,12 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const restored = await getDocument(tx, id);
+    await record(tx, 'document.restored', id, user?.id ?? null, {
+      document: restored,
+      from: 'revision',
+      revision,
+    });
+    return documentRow(restored);
   });
 }

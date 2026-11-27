@@ -3,7 +3,7 @@
 Use a separate Neon development branch and copied original-file directory for rehearsal. Verify record and attachment counts before changing anything.
 
 1. Configure a private `.env.local` with the development `DATABASE_URL`, `ORIGIN`, `PUBLIC_APP_ORIGIN`, and a persistent upload directory or S3 configuration. Leave `YOGILIB_DATABASE` unset.
-2. Review `migrations/001-platform.sql`, then explicitly set `YOGILIB_ALLOW_MIGRATIONS=1` for `npm run db:migrate`. Remove the flag afterward. The migration is additive and does not reset documents, passwords or notes.
+2. Review `migrations/001-platform.sql` and `migrations/002-journal.sql` (both additive), then explicitly set `YOGILIB_ALLOW_MIGRATIONS=1` for `npm run db:migrate`. Remove the flag afterward. The migration is additive and does not reset documents, passwords or notes.
 3. Run the Node server and compare titles, scripts, metadata, HTML, notes, revisions, original files, search results and role permissions against the development database.
 4. Verify browser reading, offline reload, downloads, note retries, progress conflicts and logout. Test large PDFs and Devanagari content.
 5. Plan production cutover separately, with a tested backup and rollback plan. Do not run two application versions against a live database without checking concurrent-write compatibility.

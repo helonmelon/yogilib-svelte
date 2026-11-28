@@ -90,6 +90,14 @@ const added: Record<string, string> = {
   'Revision history': 'संशोधन इतिहास',
   'Restore this version': 'यो संस्करण पुनःस्थापना गर्नुहोस्',
   'No previous versions yet.': 'अघिल्लो संस्करण छैन।',
+  'Archive ledger': 'अभिलेख खाता',
+  'Every change is recorded in a tamper-evident history.':
+    'हरेक परिवर्तन छेडछाड पत्ता लाग्ने इतिहासमा अभिलेख हुन्छ।',
+  'Verify ledger': 'खाता जाँच गर्नुहोस्',
+  'Export ledger': 'खाता निर्यात गर्नुहोस्',
+  'Ledger intact': 'खाता सुरक्षित छ',
+  'Ledger broken': 'खाता बिग्रिएको छ',
+  events: 'घटनाहरू',
 };
 export const t = derived(locale, (lang) => (key: string) => {
   const item = (catalog as Record<string, Record<string, string>>)[key];

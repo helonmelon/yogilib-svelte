@@ -28,6 +28,7 @@ src/
 │  ├─ server/              runs only on the Node server
 │  │  ├─ api.ts            every API endpoint + role checks
 │  │  ├─ archive.ts        search, sanitising, edits, revisions, deletion
+│  │  ├─ ledger.ts         append-only hash-chained event log, verify, export, replay
 │  │  ├─ auth.ts           bcrypt passwords, hashed sessions
 │  │  ├─ db.ts             PostgreSQL / PGlite connection, dev seeding
 │  │  └─ storage.ts        upload validation, local disk or S3
@@ -47,12 +48,13 @@ Other top-level pieces:
 | Path                          | Purpose                                                                                 |
 | ----------------------------- | --------------------------------------------------------------------------------------- |
 | `migrations/001-platform.sql` | Additive schema for external PostgreSQL; run only via `npm run db:migrate` after review |
+| `migrations/002-ledger.sql`   | Additive append-only archive ledger (hash-chained event log); review before migrating  |
 | `scripts/`                    | `migrate.ts`, `smoke.mjs`, `offline-worker.mjs`, `check-mobile.mjs`                     |
 | `tests/`                      | Vitest: `platform.test.ts` (server workflows), `offline.test.ts` (queue)                |
 | `static/static/`              | Fonts, images, legacy CSS/JS                                                            |
 | `android/`, `ios/`            | Capacitor native projects (`capacitor.config.ts`)                                       |
 | `Dockerfile`, `.env.example`  | Server container and configuration template                                             |
-| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, this map            |
+| `docs/`                       | `architecture.md`, `migration.md`, `verification.md`, `hosting.md`, `vision.md`, this map |
 
 ## 3. How a request flows
 

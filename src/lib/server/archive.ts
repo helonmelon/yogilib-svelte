@@ -3,6 +3,9 @@ import { createHash } from 'node:crypto';
 import type { DB } from './db';
 import type { ArchiveDocument, User } from '../types';
 import { categories, canDelete } from '../types';
+import { fields } from './archive-fields';
+import { record, snapshot } from './ledger';
+export { fields };
 export class Failure extends Error {
   constructor(
     public status: number,
@@ -63,21 +66,6 @@ export function version(d: Record<string, any>) {
     .digest('hex')
     .slice(0, 24);
 }
-export const fields = [
-  'title',
-  'title_np',
-  'category',
-  'description',
-  'body_html',
-  'body_text',
-  'lang',
-  'script',
-  'orig_author',
-  'orig_author_np',
-  'orig_year',
-  'orig_month',
-  'orig_day',
-];
 export function documentRow(row: Record<string, any>): ArchiveDocument {
   const d: any = { ...row };
   for (const k of [...fields, 'file_path', 'uploaded_by'])
@@ -166,7 +154,12 @@ export async function saveDocument(
         `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
         [...fields.map((k) => d[k]), id],
       );
-      return documentRow(await getDocument(tx, id));
+      const after = await getDocument(tx, id);
+      await record(tx, db, 'document.update', user, id, {
+        before: snapshot(current),
+        after: snapshot(after),
+      });
+      return documentRow(after);
     }
     const keys = [...fields, 'uploaded_by', 'created_at', 'file_path'];
     const values = [
@@ -179,14 +172,21 @@ export async function saveDocument(
       `INSERT INTO documents(${keys.join(',')}) VALUES(${keys.map((_, i) => '$' + (i + 1)).join(',')}) RETURNING *`,
       values,
     );
+    await record(tx, db, 'document.create', user, String(r.rows[0].id), {
+      after: snapshot(r.rows[0]),
+    });
     return documentRow(r.rows[0]);
   });
 }
 export async function deleteDocument(db: DB, id: string, user: User) {
   return db.transaction(async (tx) => {
-    const d = documentRow(await getDocument(tx, id, true));
+    const row = await getDocument(tx, id, true);
+    const d = documentRow(row);
     if (!canDelete(user, d))
       throw new Failure(403, 'You can only delete documents you uploaded.');
+    await record(tx, db, 'document.delete', user, id, {
+      before: snapshot(row),
+    });
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -200,9 +200,15 @@ export async function deleteDocument(db: DB, id: string, user: User) {
 export async function deleteAllDocuments(db: DB, user: User) {
   if (user.role !== 'admin') throw new Failure(403, 'Forbidden');
   return db.transaction(async (tx) => {
-    const documents = await tx.query<{ file_path: string }>(
-      'SELECT file_path FROM documents',
-    );
+    const documents = await tx.query('SELECT * FROM documents ORDER BY id');
+    // Each document's final state stays in the ledger, so a mistaken wipe is recoverable.
+    for (const row of documents.rows)
+      await record(tx, db, 'document.delete', user, String(row.id), {
+        before: snapshot(row),
+      });
+    await record(tx, db, 'archive.delete-all', user, null, {
+      count: documents.rows.length,
+    });
     for (const table of [
       'document_notes',
       'document_revisions',
@@ -212,7 +218,9 @@ export async function deleteAllDocuments(db: DB, user: User) {
     await tx.query('DELETE FROM documents');
     return {
       count: documents.rows.length,
-      files: documents.rows.map((row) => row.file_path).filter(Boolean),
+      files: documents.rows
+        .map((row) => String(row.file_path ?? ''))
+        .filter(Boolean),
     };
   });
 }
@@ -221,6 +229,7 @@ export async function restoreDocument(
   id: string,
   revision: string,
   expected: string,
+  user: User,
 ) {
   return db.transaction(async (tx) => {
     const current = await getDocument(tx, id, true);
@@ -240,6 +249,12 @@ export async function restoreDocument(
       `UPDATE documents SET ${fields.map((k, i) => `${k}=$${i + 1}`).join(',')} WHERE id=$${fields.length + 1}`,
       [...fields.map((k) => d[k] ?? ''), id],
     );
-    return documentRow(await getDocument(tx, id));
+    const after = await getDocument(tx, id);
+    await record(tx, db, 'document.restore', user, id, {
+      revision,
+      before: snapshot(current),
+      after: snapshot(after),
+    });
+    return documentRow(after);
   });
 }

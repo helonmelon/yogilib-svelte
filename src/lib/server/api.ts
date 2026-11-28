@@ -12,6 +12,7 @@ import {
   deleteAllDocuments,
   restoreDocument,
 } from './archive';
+import { listEvents, allEvents, verifyEvents } from './ledger';
 import { saveMedia, removeMedia, mediaResponse } from './storage';
 import type { User } from '../types';
 async function input(request: Request) {
@@ -120,11 +121,53 @@ export async function handleAPI(event: RequestEvent) {
       cookies.delete('yogilib-session', { path: '/' });
       return json({ ok: true });
     }
+    if (path[0] === 'ledger' && method === 'GET') {
+      requireUser('admin');
+      if (path[1] === 'verify') return json(await verifyEvents(allEvents(db)));
+      if (path[1] === 'export') {
+        const events = allEvents(db);
+        const encoder = new TextEncoder();
+        const body = new ReadableStream({
+          async pull(controller) {
+            const next = await events.next();
+            if (next.done) controller.close();
+            else
+              controller.enqueue(
+                encoder.encode(JSON.stringify(next.value) + '\n'),
+              );
+          },
+        });
+        return new Response(body, {
+          headers: {
+            'Content-Type': 'application/x-ndjson; charset=utf-8',
+            'Content-Disposition': `attachment; filename="yogilib-ledger-${new Date().toISOString().slice(0, 10)}.ndjson"`,
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
+      if (path[1]) throw new Failure(404, 'Not found');
+      const document = url.searchParams.get('document') || '';
+      const before = url.searchParams.get('before') || '';
+      if (
+        (document && !/^\d+$/.test(document)) ||
+        (before && !/^\d+$/.test(before))
+      )
+        throw new Failure(400, 'Invalid ledger filter');
+      return json(
+        await listEvents(db, {
+          document: document || undefined,
+          before: before || undefined,
+          limit: Number(url.searchParams.get('limit') || 50) || 50,
+        }),
+      );
+    }
     if (path[0] !== 'documents') throw new Failure(404, 'Not found');
     const id = path[1];
     if (id === 'all' && method === 'DELETE') {
       const deleted = await deleteAllDocuments(db, requireUser('admin'));
-      await Promise.all(deleted.files.map((file) => removeMedia(file).catch(() => {})));
+      await Promise.all(
+        deleted.files.map((file) => removeMedia(file).catch(() => {})),
+      );
       return json({ ok: true, deleted: deleted.count });
     }
     if (!id && method === 'GET') {
@@ -263,7 +306,15 @@ export async function handleAPI(event: RequestEvent) {
       }
       if (method === 'POST' && /^\d+$/.test(path[3] || '')) {
         const b = await input(request);
-        return json(await restoreDocument(db, id, path[3], String(b.version)));
+        return json(
+          await restoreDocument(
+            db,
+            id,
+            path[3],
+            String(b.version),
+            requireUser('admin'),
+          ),
+        );
       }
     }
     throw new Failure(405, 'Method not allowed');

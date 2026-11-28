@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
@@ -10,6 +10,12 @@ import { handle } from '../src/hooks.server';
 import { safeHTML } from '../src/lib/server/archive';
 import { preetiToUnicode } from '../src/lib/converters/preeti-unicode';
 import { itransToUnicode } from '../src/lib/converters/itrans-unicode';
+import {
+  canonical,
+  listEvents,
+  replay,
+  verifyEvents,
+} from '../src/lib/server/ledger';
 import { MAX_UPLOAD_BYTES } from '../src/lib/limits';
 let temp: string;
 const jars: Record<string, Map<string, string>> = {};
@@ -324,11 +330,110 @@ describe('Archive API and role boundaries', () => {
       'uploader',
     );
     expect(created.status).toBe(201);
-    expect((await call('documents/1', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'uploader')).status).toBe(403);
-    expect((await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted).toBeGreaterThan(0);
+    expect(
+      (await call('documents/1', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'uploader')).status,
+    ).toBe(403);
+    expect(
+      (await call('documents/all', 'DELETE', undefined, 'admin')).data.deleted,
+    ).toBeGreaterThan(0);
     expect((await call('documents/1')).status).toBe(404);
     expect((await call('documents/' + created.data.id)).status).toBe(404);
+  });
+});
+describe('Archive ledger', () => {
+  it('limits the ledger to admins', async () => {
+    expect((await call('ledger')).status).toBe(401);
+    expect((await call('ledger', 'GET', undefined, 'uploader')).status).toBe(
+      403,
+    );
+    expect(
+      (await call('ledger/verify', 'GET', undefined, 'viewer')).status,
+    ).toBe(403);
+    expect(
+      (await call('ledger/export', 'GET', undefined, 'viewer')).status,
+    ).toBe(403);
+    expect(
+      (await call('ledger?document=x', 'GET', undefined, 'admin')).status,
+    ).toBe(400);
+  });
+  it('records every mutation in an unbroken hash chain, including the full wipe', async () => {
+    const events = (await call('ledger?limit=200', 'GET', undefined, 'admin'))
+      .data;
+    const kinds = events.map((e: any) => e.kind);
+    for (const k of [
+      'document.create',
+      'document.update',
+      'document.restore',
+      'document.delete',
+      'archive.delete-all',
+    ])
+      expect(kinds).toContain(k);
+    const wiped = events.find(
+      (e: any) => e.kind === 'document.delete' && e.document_id === '1',
+    );
+    expect(wiped.payload.before.body_html).toContain('सुगौली सन्धि');
+    const verified = (await call('ledger/verify', 'GET', undefined, 'admin'))
+      .data;
+    expect(verified).toMatchObject({
+      ok: true,
+      events: events.length,
+      head: events[0].hash,
+    });
+    expect(replay([...events].reverse()).size).toBe(0);
+  });
+  it('exports NDJSON that verifies offline and detects tampering', async () => {
+    const jar = jars.admin;
+    const request = new Request('http://localhost/api/ledger/export');
+    const response = await handleAPI({
+      request,
+      url: new URL(request.url),
+      params: { path: 'ledger/export' },
+      cookies: { get: (k: string) => jar.get(k), set() {}, delete() {} },
+      getClientAddress: () => 'admin',
+    } as any);
+    expect(response.headers.get('content-type')).toContain('ndjson');
+    const lines = (await response.text())
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l));
+    expect((await verifyEvents(lines)).ok).toBe(true);
+    const tampered = structuredClone(lines);
+    tampered[0].payload.after.title = 'Rewritten history';
+    expect(await verifyEvents(tampered)).toMatchObject({
+      ok: false,
+      brokenAt: '1',
+    });
+    expect(await verifyEvents(lines.slice(1))).toMatchObject({
+      ok: false,
+      reason: 'Sequence gap',
+    });
+  });
+  it('hashes canonically regardless of key order', () => {
+    expect(canonical({ b: 1, a: { d: 'ॐ', c: [2, 1] } })).toBe(
+      canonical({ a: { c: [2, 1], d: 'ॐ' }, b: 1 }),
+    );
+  });
+  it('keeps working on an external database that has not run the ledger migration', async () => {
+    const raw = new PGlite();
+    const db = wrapPglite(raw);
+    await db.query(
+      (await readFile('migrations/001-platform.sql', 'utf8')).split(';')[0],
+    );
+    await db.query(
+      "INSERT INTO documents(title,category,created_at) VALUES('Old','कागजात','2020')",
+    );
+    const { saveDocument } = await import('../src/lib/server/archive');
+    const created = await saveDocument(
+      db,
+      { title: 'New', category: 'कागजात', body_html: '<p>ok</p>' },
+      { id: '1', email: 'a@x.invalid', role: 'admin' },
+    );
+    expect(created.title).toBe('New');
+    expect(await listEvents(db)).toEqual([]);
+    await raw.close();
   });
 });
 describe('Non-destructive migration', () => {
